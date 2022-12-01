@@ -3,6 +3,7 @@ Platformer Game
 """
 import arcade
 import numpy as np
+from ai import perceptron
 
 
 # Constants
@@ -35,6 +36,12 @@ class MyGame(arcade.Window):
 
         # Call the parent class and set up the window
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+        
+        
+        # Initialize AI
+        self.ai = None
+        self.ai_input = np.array([0,0,0])
+        
 
         # Our Scene Object
         self.scene = None
@@ -215,7 +222,7 @@ class MyGame(arcade.Window):
                 self.player_sprite, self.scene["Enemies"]
             )
             for enemy in enemy_hit_list:
-                continue
+                arcade.exit()
                 enemy.remove_from_sprite_lists()
             
             # See if enemy hit the spikes
@@ -243,12 +250,34 @@ class MyGame(arcade.Window):
                 # Add one to the score
                 self.score += 1
         
+        
         # Increment score each frame!
         self.score += 1
 
         # Position the camera
         self.center_camera_to_player()
-
+        
+        
+        # Next move for the AI
+        if self.ai is not None:
+            self.AI_move()
+            
+    def AI_move(self):
+    
+        self.ai_input[0] = self.player_sprite.center_y
+        if "Enemies" in self.scene.name_mapping:
+            closest,min_dist = arcade.get_closest_sprite(self.player_sprite,self.scene["Enemies"])
+            self.ai_input[1] = closest.center_x-self.player_sprite.center_x
+            self.ai_input[2] = closest.center_y
+        else:
+            self.ai_input[1],self.ai_input[2] = 0,0
+        
+        move = self.ai.run_net(self.ai_input)
+        
+        if move == 1:
+            self.on_key_press(arcade.key.UP,None)
+        
+            
     def spawn_enemy(self):
         
         randint = np.random.randint(3)
@@ -285,8 +314,17 @@ def main():
     """Main function"""
     window = MyGame()
     window.setup()
+    
+    window.ai = perceptron()
+    window.ai.scales[1][0] = SCREEN_HEIGHT
+    window.ai.scales[1][1] = SCREEN_WIDTH
+    window.ai.scales[1][2] = SCREEN_HEIGHT
+    
+    
     arcade.run()
 
+    
+    print("DIED",window.score)
 
 if __name__ == "__main__":
     main()
