@@ -2,6 +2,8 @@
 Platformer Game
 """
 import arcade
+import numpy as np
+
 
 # Constants
 SCREEN_WIDTH = 1000
@@ -12,10 +14,15 @@ SCREEN_TITLE = "Platformer"
 CHARACTER_SCALING = 1
 TILE_SCALING = 0.5
 COIN_SCALING = 0.5
+ZOMBIE_SCALING = 1
+
+# Enemy stuff
+SPAWN_INTERVAL = 100
+ZOMBIE_SPEED = -5
 
 # Movement speed of player, in pixels per frame
 PLAYER_MOVEMENT_SPEED = 5
-GRAVITY = 1
+GRAVITY = 0.75#1
 PLAYER_JUMP_SPEED = 20
 
 
@@ -34,7 +41,8 @@ class MyGame(arcade.Window):
 
         # Separate variable that holds the player sprite
         self.player_sprite = None
-
+        
+        
         # Our physics engine
         self.physics_engine = None
 
@@ -69,12 +77,20 @@ class MyGame(arcade.Window):
         self.scene = arcade.Scene()
 
         # Set up the player, specifically placing it at these coordinates.
-        image_source = ":resources:images/animated_characters/female_adventurer/femaleAdventurer_idle.png"
+        image_source = ":resources:images/animated_characters/female_person/femalePerson_idle.png"
         self.player_sprite = arcade.Sprite(image_source, CHARACTER_SCALING)
-        self.player_sprite.center_x = 64
+        self.player_sprite.center_x = 128
         self.player_sprite.center_y = 96
         self.scene.add_sprite("Player", self.player_sprite)
 
+        
+        for y in range(96,3*96,96):
+            spikes = arcade.Sprite(":resources:images/tiles/spikes.png", TILE_SCALING, angle=-90)
+            spikes.center_x = 20
+            spikes.center_y = y
+            self.scene.add_sprite("Spikes", spikes)
+        
+        
         # Create the ground
         # This shows using a loop to place multiple sprites horizontally
         for x in range(0, 1250, 64):
@@ -82,18 +98,19 @@ class MyGame(arcade.Window):
             wall.center_x = x
             wall.center_y = 32
             self.scene.add_sprite("Walls", wall)
+        
 
         # Put some crates on the ground
         # This shows using a coordinate list to place sprites
         coordinate_list = [[512, 96], [256, 96], [768, 96]]
-
-        for coordinate in coordinate_list:
-            # Add a crate on the ground
-            wall = arcade.Sprite(
-                ":resources:images/tiles/boxCrate_double.png", TILE_SCALING
-            )
-            wall.position = coordinate
-            self.scene.add_sprite("Walls", wall)
+        if False:
+            for coordinate in coordinate_list:
+                # Add a crate on the ground
+                wall = arcade.Sprite(
+                    ":resources:images/tiles/boxCrate_double.png", TILE_SCALING
+                )
+                wall.position = coordinate
+                self.scene.add_sprite("Walls", wall)
 
         # Use a loop to place some coins for our character to pick up
         for x in range(128, 1250, 256):
@@ -101,6 +118,12 @@ class MyGame(arcade.Window):
             coin.center_x = x
             coin.center_y = 96
             self.scene.add_sprite("Coins", coin)
+            
+            
+            
+            
+        # For incrementing spawns
+        self.spawntimer = 0
 
         # Create the 'physics engine'
         self.physics_engine = arcade.PhysicsEnginePlatformer(
@@ -172,23 +195,90 @@ class MyGame(arcade.Window):
 
         # Move the player with the physics engine
         self.physics_engine.update()
+        
+        # Spawn enemies
+        self.spawntimer += 1
+        if self.spawntimer > SPAWN_INTERVAL:
+            
+            self.spawn_enemy()
+            
+            self.spawntimer = 0
+        
+        # Move enemies
+        if "Enemies" in self.scene.name_mapping:
+            self.scene["Enemies"].update()
+            
+            # Hit enemies
+            
+            # See if we hit any Enemies
+            enemy_hit_list = arcade.check_for_collision_with_list(
+                self.player_sprite, self.scene["Enemies"]
+            )
+            for enemy in enemy_hit_list:
+                continue
+                enemy.remove_from_sprite_lists()
+            
+            # See if enemy hit the spikes
+            for spike in self.scene["Spikes"]:
+                enemy_hit_list = arcade.check_for_collision_with_list(
+                    spike, self.scene["Enemies"]
+                )
+                for enemy in enemy_hit_list:
+                    enemy.remove_from_sprite_lists()
+        
+        
+        
+        if False:
+            # See if we hit any coins
+            coin_hit_list = arcade.check_for_collision_with_list(
+                self.player_sprite, self.scene["Coins"]
+            )
 
-        # See if we hit any coins
-        coin_hit_list = arcade.check_for_collision_with_list(
-            self.player_sprite, self.scene["Coins"]
-        )
-
-        # Loop through each coin we hit (if any) and remove it
-        for coin in coin_hit_list:
-            # Remove the coin
-            coin.remove_from_sprite_lists()
-            # Play a sound
-            # arcade.play_sound(self.collect_coin_sound)
-            # Add one to the score
-            self.score += 1
+            # Loop through each coin we hit (if any) and remove it
+            for coin in coin_hit_list:
+                # Remove the coin
+                coin.remove_from_sprite_lists()
+                # Play a sound
+                # arcade.play_sound(self.collect_coin_sound)
+                # Add one to the score
+                self.score += 1
+        
+        # Increment score each frame!
+        self.score += 1
 
         # Position the camera
         self.center_camera_to_player()
+
+    def spawn_enemy(self):
+        
+        randint = np.random.randint(3)
+        if randint == 0:
+            self._make_zombie()
+        else:
+            self._make_bee(randint)
+            
+    def _make_bee(self,randint):
+        zombie = arcade.Sprite(":resources:images/enemies/bee.png", ZOMBIE_SCALING)
+        zombie.center_x = SCREEN_WIDTH-50
+        zombie.center_y = 96
+        zombie.center_y = 96+randint*60 # ? Why is not same as character?
+        
+        zombie.change_x = ZOMBIE_SPEED
+        
+        self.scene.add_sprite("Enemies", zombie)
+        
+        
+    def _make_zombie(self):
+        
+        zombie = arcade.Sprite(":resources:images/animated_characters/zombie/zombie_idle.png", ZOMBIE_SCALING)
+        zombie.center_x = SCREEN_WIDTH-50
+        zombie.center_y = 96
+        zombie.center_y = 96+30 # ? Why is not same as character?
+        
+        zombie.change_x = ZOMBIE_SPEED
+        
+        self.scene.add_sprite("Enemies", zombie)
+        
 
 
 def main():
