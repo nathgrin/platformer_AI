@@ -15,11 +15,11 @@ SCREEN_TITLE = "Platformer"
 CHARACTER_SCALING = 1
 TILE_SCALING = 0.5
 COIN_SCALING = 0.5
-ZOMBIE_SCALING = 1
+ZOMBIE_SCALING = 0.7
 
 # Enemy stuff
-SPAWN_INTERVAL = 100
-ZOMBIE_SPEED = -5
+SPAWN_INTERVAL = 150
+ZOMBIE_SPEED = -7
 
 # Movement speed of player, in pixels per frame
 PLAYER_MOVEMENT_SPEED = 5
@@ -32,7 +32,7 @@ class MyGame(arcade.Window):
     Main application class.
     """
 
-    def __init__(self):
+    def __init__(self,enable_camera=True):
 
         # Call the parent class and set up the window
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
@@ -42,7 +42,6 @@ class MyGame(arcade.Window):
         self.ai = None
         self.ai_input = np.array([0,0,0])
         
-
         # Our Scene Object
         self.scene = None
 
@@ -52,6 +51,9 @@ class MyGame(arcade.Window):
         
         # Our physics engine
         self.physics_engine = None
+
+        # Watch the game played?
+        self.enable_camera = enable_camera
 
         # A Camera that can be used for scrolling the screen
         self.camera = None
@@ -63,19 +65,20 @@ class MyGame(arcade.Window):
         self.score = 0
 
         # Load sounds
-        self.collect_coin_sound = arcade.load_sound(":resources:sounds/coin1.wav")
-        self.jump_sound = arcade.load_sound(":resources:sounds/jump1.wav")
+        # self.collect_coin_sound = arcade.load_sound(":resources:sounds/coin1.wav")
+        # self.jump_sound = arcade.load_sound(":resources:sounds/jump1.wav")
 
         arcade.set_background_color(arcade.csscolor.CORNFLOWER_BLUE)
 
     def setup(self):
         """Set up the game here. Call this function to restart the game."""
 
-        # Set up the Game Camera
-        self.camera = arcade.Camera(self.width, self.height)
+        if self.enable_camera:
+            # Set up the Game Camera
+            self.camera = arcade.Camera(self.width, self.height)
 
-        # Set up the GUI Camera
-        self.gui_camera = arcade.Camera(self.width, self.height)
+            # Set up the GUI Camera
+            self.gui_camera = arcade.Camera(self.width, self.height)
 
         # Keep track of the score
         self.score = 0
@@ -120,17 +123,17 @@ class MyGame(arcade.Window):
                 self.scene.add_sprite("Walls", wall)
 
         # Use a loop to place some coins for our character to pick up
-        for x in range(128, 1250, 256):
-            coin = arcade.Sprite(":resources:images/items/coinGold.png", COIN_SCALING)
-            coin.center_x = x
-            coin.center_y = 96
-            self.scene.add_sprite("Coins", coin)
+        # for x in range(128, 1250, 256):
+        #     coin = arcade.Sprite(":resources:images/items/coinGold.png", COIN_SCALING)
+        #     coin.center_x = x
+        #     coin.center_y = 96
+        #     self.scene.add_sprite("Coins", coin)
             
             
             
             
         # For incrementing spawns
-        self.spawntimer = 0
+        self.spawntimer = SPAWN_INTERVAL-5 # spawn almost immediately
 
         # Create the 'physics engine'
         self.physics_engine = arcade.PhysicsEnginePlatformer(
@@ -139,7 +142,8 @@ class MyGame(arcade.Window):
 
     def on_draw(self):
         """Render the screen."""
-
+        if not self.enable_camera:
+            return
         # Clear the screen to the background color
         self.clear()
 
@@ -222,7 +226,7 @@ class MyGame(arcade.Window):
                 self.player_sprite, self.scene["Enemies"]
             )
             for enemy in enemy_hit_list:
-                arcade.exit()
+                self.end_game()
                 enemy.remove_from_sprite_lists()
             
             # See if enemy hit the spikes
@@ -253,22 +257,31 @@ class MyGame(arcade.Window):
         
         # Increment score each frame!
         self.score += 1
+        
+        if self.score > 10000:
+            self.end_game()
 
         # Position the camera
-        self.center_camera_to_player()
+        if self.enable_camera:
+            self.center_camera_to_player()
         
         
         # Next move for the AI
         if self.ai is not None:
             self.AI_move()
             
+    def end_game(self):
+        arcade.exit()
+            
     def AI_move(self):
     
         self.ai_input[0] = self.player_sprite.center_y
         if "Enemies" in self.scene.name_mapping:
-            closest,min_dist = arcade.get_closest_sprite(self.player_sprite,self.scene["Enemies"])
-            self.ai_input[1] = closest.center_x-self.player_sprite.center_x
-            self.ai_input[2] = closest.center_y
+            res = arcade.get_closest_sprite(self.player_sprite,self.scene["Enemies"])
+            if res is not None:
+                closest,min_dist = res
+                self.ai_input[1] = closest.center_x-self.player_sprite.center_x
+                self.ai_input[2] = closest.center_y
         else:
             self.ai_input[1],self.ai_input[2] = 0,0
         
@@ -290,7 +303,7 @@ class MyGame(arcade.Window):
         zombie = arcade.Sprite(":resources:images/enemies/bee.png", ZOMBIE_SCALING)
         zombie.center_x = SCREEN_WIDTH-50
         zombie.center_y = 96
-        zombie.center_y = 96+randint*60 # ? Why is not same as character?
+        zombie.center_y = 96+randint*90 # ? Why is not same as character?
         
         zombie.change_x = ZOMBIE_SPEED
         
@@ -302,7 +315,7 @@ class MyGame(arcade.Window):
         zombie = arcade.Sprite(":resources:images/animated_characters/zombie/zombie_idle.png", ZOMBIE_SCALING)
         zombie.center_x = SCREEN_WIDTH-50
         zombie.center_y = 96
-        zombie.center_y = 96+30 # ? Why is not same as character?
+        zombie.center_y = 96+10 # ? Why is not same as character?
         
         zombie.change_x = ZOMBIE_SPEED
         

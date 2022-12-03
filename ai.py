@@ -17,10 +17,6 @@ class perceptron():
         self.input_arr = np.ones(n) 
         self.scales = (np.zeros(n-1),np.ones(n-1))
         
-    def set_scales(self,scales):
-        
-        self.scales = scales
-        
         
     def activation_func(self,val):
         
@@ -51,7 +47,7 @@ def main():
     
     input()
     
-    thegame = MyGame()
+    thegame = myGame()
     thegame.setup()
     thegame.run()
     
