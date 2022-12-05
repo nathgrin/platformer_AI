@@ -47,9 +47,9 @@ def main():
     
     input()
     
-    thegame = myGame()
-    thegame.setup()
-    thegame.run()
+    # thegame = myGame()
+    # thegame.setup()
+    # thegame.run()
     
     
 if __name__ == "__main__":

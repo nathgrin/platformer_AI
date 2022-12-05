@@ -19,9 +19,9 @@ def main():
     for gen in all_gens:
         for entry in gen:
             data_arr[0].append(entry[0])
-            data_arr[1].append(entry[2])
+            data_arr[-1].append(entry[2])
             for i,e in enumerate(entry[1]):
-                data_arr[i+2].append(e)
+                data_arr[i+1].append(e)
     data_arr = np.array(data_arr).transpose()
     print(data_arr)
     
@@ -29,11 +29,11 @@ def main():
     data_arr,
     labels=[
         r"gen",
-        r"score",
         r"w1",
         r"w2",
         r"w3",
         r"w4",
+        r"score",
     ],
     quantiles=[0.16, 0.5, 0.84],
     plot_contours=False,

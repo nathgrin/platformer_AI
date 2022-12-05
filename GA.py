@@ -4,11 +4,11 @@
 from game import *
 
 class myGA():
-    def __init__(self):
+    def __init__(self,rates={},settings={}):
         
-        self.mutate_rate = 0.1
-        self.nudge_rate = 0.
-        self.nudge_size = 0.01
+        self.mutate_rate = rates.get('mutate_rate',0.2)
+        self.nudge_rate = rates.get('nudge_rate',0.)
+        self.nudge_size = settings.get('nudge_size',0.01) # std of normal distr
         
         
     def new_individual(self,ai_instance):
@@ -193,14 +193,16 @@ def main():
         
         for indivi in individuals:
             thegame = MyGame(enable_camera = WATCH_GAMES)
-            thegame.setup()
             thegame.ai = indivi['ai']
-        
-            arcade.run()
-            arcade.close_window()
+            score = 0
+            for i in range(3): # n attempts for each AI.
+                thegame.setup()
             
-            # arcarde.close_window() inside class, then:
-            result['scores'].append(thegame.score)
+                arcade.run()
+                # arcarde.exit() inside class, then:
+                score += thegame.score
+            arcade.close_window()
+            result['scores'].append(score)
             # print("DIED",thegame.score)
             
             
