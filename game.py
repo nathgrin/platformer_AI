@@ -26,6 +26,9 @@ PLAYER_MOVEMENT_SPEED = 5
 GRAVITY = 0.75#1
 PLAYER_JUMP_SPEED = 20
 
+# GA extra
+WATCH_GAMES = True
+
 
 class MyGame(arcade.Window):
     """
@@ -94,7 +97,7 @@ class MyGame(arcade.Window):
         self.scene.add_sprite("Player", self.player_sprite)
 
         
-        for y in range(96,3*96,96):
+        for y in range(96,5*96,96):
             spikes = arcade.Sprite(":resources:images/tiles/spikes.png", TILE_SCALING, angle=-90)
             spikes.center_x = 20
             spikes.center_y = y
