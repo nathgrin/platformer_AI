@@ -1,5 +1,6 @@
 """ Lets see..
 """
+import datetime
 
 from game import *
 
@@ -236,17 +237,18 @@ def main():
         gen += 1
         
         print(" > Start gen",gen)
+        print(datetime.datetime.now())
         result = {'scores':[]}
         
         # Test the generation
         for individual in generation:
-            theGA.eval_individual(individual)
+            score = theGA.eval_individual(individual)
             result['scores'].append(score)
             # print("DIED",thegame.score)
             
             
         print(" !Done playing")
-        print(" scores",result['scores'])
+        print(" scores",result['scores'],np.mean(result['scores']))
         # Write to file
         theGA.output_gen(fname,gen,generation,result['scores'])
         
@@ -264,6 +266,7 @@ def main():
                     cnt += 1
             
         # Test Children
+        print("Play Children")
         children_scores = []
         for i,child in enumerate(children):
             score = theGA.eval_individual(child)

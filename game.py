@@ -27,7 +27,7 @@ GRAVITY = 0.75#1
 PLAYER_JUMP_SPEED = 20
 
 # GA extra
-WATCH_GAMES = True
+WATCH_GAMES = False
 
 
 class MyGame(arcade.Window):
