@@ -27,7 +27,7 @@ GRAVITY = 0.75#1
 PLAYER_JUMP_SPEED = 20
 
 # GA extra
-WATCH_GAMES = True
+WATCH_GAMES = False
 
 
 class MyGame(arcade.Window):
@@ -40,27 +40,20 @@ class MyGame(arcade.Window):
         # Call the parent class and set up the window
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
         
-        self.SCREEN_WIDTH = SCREEN_WIDTH
-        self.SCREEN_HEIGHT = SCREEN_HEIGHT
         
         # Initialize AI
         self.ai = None
-        self.multiple_ai = False
         self.ai_input = np.array([0,0,0])
-        self.players_alive = None
-        
-        self.score_list = None
         
         # Our Scene Object
         self.scene = None
 
         # Separate variable that holds the player sprite
         self.player_sprite = None
-        self.player_sprites = None
+        
         
         # Our physics engine
         self.physics_engine = None
-        self.physics_engines = None
 
         # Watch the game played?
         self.enable_camera = enable_camera
@@ -98,24 +91,10 @@ class MyGame(arcade.Window):
 
         # Set up the player, specifically placing it at these coordinates.
         image_source = ":resources:images/animated_characters/female_person/femalePerson_idle.png"
-        if self.multiple_ai:
-            self.players_alive = [True for i in self.ai]
-            self.score_list = [ 0 for i in self.ai]
-            self.player_sprites = arcade.SpriteList()
-            self.physics_engines = []
-            # print("Add AIs")
-            for i in range(len(self.ai)):
-                player_sprite = arcade.Sprite(image_source, CHARACTER_SCALING)
-                player_sprite.center_x = 128
-                player_sprite.center_y = 96
-                player_sprite.alpha = 100
-                self.player_sprites.append(player_sprite)
-                self.scene.add_sprite("Players", player_sprite)
-        else:
-            self.player_sprite = arcade.Sprite(image_source, CHARACTER_SCALING)
-            self.player_sprite.center_x = 128
-            self.player_sprite.center_y = 96
-            self.scene.add_sprite("Player", self.player_sprite)
+        self.player_sprite = arcade.Sprite(image_source, CHARACTER_SCALING)
+        self.player_sprite.center_x = 128
+        self.player_sprite.center_y = 96
+        self.scene.add_sprite("Player", self.player_sprite)
 
         
         for y in range(96,5*96,96):
@@ -160,15 +139,9 @@ class MyGame(arcade.Window):
         self.spawntimer = SPAWN_INTERVAL-5 # spawn almost immediately
 
         # Create the 'physics engine'
-        if self.multiple_ai:
-            for i in range(len(self.ai)):
-                self.physics_engines.append(arcade.PhysicsEnginePlatformer(
-                    self.player_sprites[i], gravity_constant=GRAVITY, walls=self.scene["Walls"]
-                ))
-        else:
-            self.physics_engine = arcade.PhysicsEnginePlatformer(
-                self.player_sprite, gravity_constant=GRAVITY, walls=self.scene["Walls"]
-            )
+        self.physics_engine = arcade.PhysicsEnginePlatformer(
+            self.player_sprite, gravity_constant=GRAVITY, walls=self.scene["Walls"]
+        )
 
     def on_draw(self):
         """Render the screen."""
@@ -231,24 +204,11 @@ class MyGame(arcade.Window):
 
         self.camera.move_to(player_centered)
 
-
-    def set_sprite_aside(self,sprite,x,y):
-        
-        sprite.center_x = x
-        sprite.center_y = y
-        sprite.change_x = 0
-        sprite.change_y = 0
-
     def on_update(self, delta_time):
         """Movement and game logic"""
 
         # Move the player with the physics engine
-        if self.multiple_ai:
-            for i,engine in enumerate(self.physics_engines):
-                if self.players_alive[i]:
-                    engine.update()
-        else:
-            self.physics_engine.update()
+        self.physics_engine.update()
         
         # Spawn enemies
         self.spawntimer += 1
@@ -258,12 +218,6 @@ class MyGame(arcade.Window):
             
             self.spawntimer = 0
         
-        # move ai players if multiple
-        if self.multiple_ai:
-            self.scene["Players"].update()
-                
-                
-        
         # Move enemies
         if "Enemies" in self.scene.name_mapping:
             self.scene["Enemies"].update()
@@ -271,24 +225,13 @@ class MyGame(arcade.Window):
             # Hit enemies
             
             # See if we hit any Enemies
-            the_list = self.scene["Players"] if self.multiple_ai else [ self.player_sprite ]
-            for i,player_sprite in enumerate(the_list):
-                if self.players_alive[i]:
-                    enemy_hit_list = arcade.check_for_collision_with_list(
-                        player_sprite, self.scene["Enemies"]
-                    )
-                    
-                    for enemy in enemy_hit_list:
-                        self.players_alive[i] = False
-                        self.score_list[i] = self.score
-                        self.set_sprite_aside(player_sprite,self.SCREEN_WIDTH-i*50,self.SCREEN_HEIGHT-50)
-                        # print("Someone died",self.players_alive,self.score_list)
-                        if sum(self.players_alive) == 0:
-                            self.end_game()
-                        break
-                        # enemy.remove_from_sprite_lists()
-                
-                
+            enemy_hit_list = arcade.check_for_collision_with_list(
+                self.player_sprite, self.scene["Enemies"]
+            )
+            for enemy in enemy_hit_list:
+                self.end_game()
+                enemy.remove_from_sprite_lists()
+            
             # See if enemy hit the spikes
             for spike in self.scene["Spikes"]:
                 enemy_hit_list = arcade.check_for_collision_with_list(
@@ -319,14 +262,11 @@ class MyGame(arcade.Window):
         self.score += 1
         
         if self.score > 10000:
-            for i,alive in enumerate(self.players_alive):
-                if alive:
-                    self.score_list[i] = self.score
             self.end_game()
 
         # Position the camera
-        # if self.enable_camera:
-        #     self.center_camera_to_player()
+        if self.enable_camera:
+            self.center_camera_to_player()
         
         
         # Next move for the AI
@@ -337,43 +277,21 @@ class MyGame(arcade.Window):
         arcade.exit()
             
     def AI_move(self):
-        
-        if self.multiple_ai:
-            for i,ai in enumerate(self.ai):
-                player_sprite = self.player_sprites[i]
-                self.ai_input[0] = player_sprite.center_y
-                if "Enemies" in self.scene.name_mapping:
-                    res = arcade.get_closest_sprite(player_sprite,self.scene["Enemies"])
-                    if res is not None:
-                        closest,min_dist = res
-                        self.ai_input[1] = closest.center_x-player_sprite.center_x
-                        self.ai_input[2] = closest.center_y
-                else:
-                    self.ai_input[1],self.ai_input[2] = 0,0
-                
-                move = self.ai[i].run_net(self.ai_input)
-                
-                if move == 1:
-                    if self.physics_engines[i].can_jump():
-                        self.player_sprites[i].change_y = PLAYER_JUMP_SPEED
-                
-            
-            
+    
+        self.ai_input[0] = self.player_sprite.center_y
+        if "Enemies" in self.scene.name_mapping:
+            res = arcade.get_closest_sprite(self.player_sprite,self.scene["Enemies"])
+            if res is not None:
+                closest,min_dist = res
+                self.ai_input[1] = closest.center_x-self.player_sprite.center_x
+                self.ai_input[2] = closest.center_y
         else:
-            self.ai_input[0] = self.player_sprite.center_y
-            if "Enemies" in self.scene.name_mapping:
-                res = arcade.get_closest_sprite(self.player_sprite,self.scene["Enemies"])
-                if res is not None:
-                    closest,min_dist = res
-                    self.ai_input[1] = closest.center_x-self.player_sprite.center_x
-                    self.ai_input[2] = closest.center_y
-            else:
-                self.ai_input[1],self.ai_input[2] = 0,0
-            
-            move = self.ai.run_net(self.ai_input)
-            
-            if move == 1:
-                self.on_key_press(arcade.key.UP,None)
+            self.ai_input[1],self.ai_input[2] = 0,0
+        
+        move = self.ai.run_net(self.ai_input)
+        
+        if move == 1:
+            self.on_key_press(arcade.key.UP,None)
         
             
     def spawn_enemy(self):
@@ -411,24 +329,18 @@ class MyGame(arcade.Window):
 def main():
     """Main function"""
     window = MyGame()
-    
-    window.ai = [ perceptron() for i in range(8) ]
-    window.multiple_ai = True
-    
     window.setup()
     
-    
-    for i in range(len(window.ai)):
-        window.ai[i].scales[1][0] = SCREEN_HEIGHT
-        window.ai[i].scales[1][1] = SCREEN_WIDTH
-        window.ai[i].scales[1][2] = SCREEN_HEIGHT
+    window.ai = perceptron()
+    window.ai.scales[1][0] = SCREEN_HEIGHT
+    window.ai.scales[1][1] = SCREEN_WIDTH
+    window.ai.scales[1][2] = SCREEN_HEIGHT
     
     
     arcade.run()
 
     
     print("DIED",window.score)
-    print(window.score_list)
 
 if __name__ == "__main__":
     main()

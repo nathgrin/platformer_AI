@@ -23,7 +23,7 @@ def main():
             for i,e in enumerate(entry[1]):
                 data_arr[i+1].append(e)
     data_arr = np.array(data_arr).transpose()
-    print(data_arr)
+    # print(data_arr)
     
     figure = corner.corner(
     data_arr,
@@ -41,6 +41,9 @@ def main():
     title_kwargs={"fontsize": 12},
     )
     
+    corner.overplot_points(figure,data_arr,c='r',alpha=0.5)
+    
+    plt.savefig("GAout.png")
     plt.show()
     
 if __name__ == "__main__":
