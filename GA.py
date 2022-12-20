@@ -380,6 +380,15 @@ class myGA():
         
         return out
         
+    def read_file(self,fname: str):
+        
+        all_lines = self.read_file_rawlines(fname)
+        
+        out = [ self.make_generation_from_lineblock(lines) for lines in all_lines ]
+        
+        return out
+        
+        
     def get_last_generation_from_file(self,fname:str) -> tuple[generation_class, GA_settings]:
         all_lines = self.read_file_rawlines(fname)
         
@@ -396,7 +405,7 @@ class myGA():
         
         generation.n = int(lines[0].split()[-1])
         
-        print(lines)
+        
         if lines[1][:9] == "#SETTINGS":
             settings = settings.from_file(lines[1])
             i = 2

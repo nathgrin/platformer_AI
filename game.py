@@ -34,7 +34,7 @@ def signed_distance_between_sprites(sprite1: arcade.Sprite, sprite2: arcade.Spri
     """distance is signed in x direction"""
     return np.sign(sprite1.center_x - sprite2.center_x)*arcade.get_distance_between_sprites(sprite1,sprite2)
 
-def get_closest_sprite_positive(sprite: arcade.Sprite, sprite_list: "SpriteList") -> tuple[arcade.Sprite, float]:
+def get_closest_sprite_positive(sprite: arcade.Sprite, sprite_list: arcade.SpriteList) -> tuple[arcade.Sprite, float]:
     """
     Given a Sprite and SpriteList, returns the closest sprite, and its distance.
 
