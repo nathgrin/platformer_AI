@@ -391,12 +391,12 @@ class myGA():
         generation.n = int(lines[0].split()[-1])
         
         print(lines)
-        if True:
+        if lines[1][:9] == "#SETTINGS":
+            settings = settings.from_file(lines[1])
             i = 2
         else:
             i = 1
         
-        input()
         generation.from_list([self.new_individual(perceptron()).from_line(line) for line in lines[i:]])
         
         return generation,settings
