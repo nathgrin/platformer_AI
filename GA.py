@@ -73,7 +73,7 @@ class individual_class(dict):
         for key,val in json.loads(line).items():
             if val is not None:
                 if key == "chromosome":
-                    self.set_chromosome(val)
+                    self.set_chromosome(np.array(val))
                 else:
                     self[key] = val
         return self
@@ -287,7 +287,7 @@ class myGA():
         
         return new_generation
         
-    def output_gen(self,fname: str,generation:generation_class):
+    def output_generation(self,fname: str,generation:generation_class):
         
         writeline = generation.make_filecontent()
         
@@ -295,6 +295,7 @@ class myGA():
         with open(fname, 'a') as thefile:
             thefile.write(writeline)
             
+        
         if False: # Old code
             scores = generation.serialize('score')
             for i in range(len(generation)):
@@ -337,6 +338,24 @@ class myGA():
         return generation
         
 
+class GA_settings(dict):
+    """extends dict,
+    contains settings
+
+    Args:
+        dict (_type_): _description_
+    """
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self,*args, **kwargs)
+        
+    def make_filecontent(self):
+        return json.dumps(self)
+        return json.dumps({key: self._process_val(key,val) for key,val in self.items()})# if process needed
+    def _process_val(self,key,val):
+        if False:
+            return None
+        else:
+            return val
 
 def main():
     # Some settings
@@ -358,7 +377,9 @@ def main():
         generation = theGA.get_last_generation_from_file(fname)
         n_individuals = len(generation)
         
-        
+    tst_dict = {'tst': 2}
+    print(tst_dict.tst)
+    input()
         
         
     # Some settings
@@ -418,7 +439,7 @@ def main():
         
         
         # Write to file
-        theGA.output_gen(fname,generation)
+        theGA.output_generation(fname,generation)
         
 
 if __name__ == "__main__":
