@@ -4,6 +4,49 @@ import datetime
 
 from game import *
 
+
+class generation_class(list):
+    """extends list,
+    represents a generation (or children)
+    contains a list of individuals, and some generation attributes
+
+    Args:
+        list (_type_): _description_
+    """
+    
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs)
+        
+        self.n = -1
+    
+    def serialize(self,key:str) -> str:
+        return [entry[key] for entry in self]
+    
+    def from_list(self,inlist:list):
+        self.clear()
+        for entry in inlist:
+            self.append(entry)
+        return self
+    
+    def __add__(self, *args, **kwargs):
+        return generation_class(super().__add__(*args, **kwargs))
+
+class individual_class(dict):
+    """extends dict,
+    represents an individual
+    contains chromosome and then some
+
+    Args:
+        dict (_type_): _description_
+    """
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self,*args, **kwargs)
+        
+        
+    def set_chromosome(self,chromosome):
+        self['chromosome'] = chromosome
+        self['ai'].weights = chromosome
+
 class myGA():
     def __init__(self,rates={},settings={}):
         
@@ -14,7 +57,12 @@ class myGA():
         
     def new_individual(self,ai_instance):
         
-        out = {'chromosome':ai_instance.weights,'ai':ai_instance}
+        out = individual_class({'chromosome':ai_instance.weights,'ai':ai_instance,'score':-1})
+        
+        out['ai'].scales[1][0] = SCREEN_HEIGHT
+        out['ai'].scales[1][1] = SCREEN_WIDTH
+        out['ai'].scales[1][2] = SCREEN_HEIGHT
+    
         return out
     
     def eval_individual(self,individual):
@@ -33,35 +81,45 @@ class myGA():
         arcade.close_window()
         return score
     
-    def eval_multiple(self,generation,enable_camera=True):
+    def eval_multiple(self,generation: generation_class,testing=False,enable_camera=True):
+        if testing:
+            for i,individual in enumerate(generation):
+                generation[i]['score'] += np.random.randint(100,200)
+            return generation
+                
         # return np.random.randint(100,152)
         n_attempts = 3
         
         thegame = MyGame(enable_camera = enable_camera)
-        thegame.ai = [individual['ai'] for individual in generation]
+        thegame.ai = generation.serialize('ai')
         thegame.multiple_ai = True
         
-        scores = [0 for i in generation]
+        
         for i in range(n_attempts): # n attempts for each AI.
             thegame.setup()
         
             arcade.run()
             # arcarde.exit() inside class, then:
             for i,score in enumerate(thegame.score_list):
-                scores[i] += score
+                generation[i]['score'] += score
         arcade.close_window()
-        return scores
+        return generation
     
-    def select_parents(self,scores: list,n_parents: int=2):
+    
+    def select_parents(self,generation: generation_class,n_parents: int=2):
         
         # out = np.argsort(scores)[-len(scores)//n_parents:][::-1] # simply the best n
-        
+        scores = generation.serialize('score')
         # probability based on score
         inds = []
-        cumul = np.cumsum(np.power(scores,2))
+        powers = np.power(scores,2,dtype='f8')
+        powers = powers/sum(powers)
+        cumul = np.cumsum(powers)
+        
         while len(inds) < n_parents:
             rando = cumul[-1]*np.random.uniform()
             ind = np.argwhere(rando <= cumul)[0][0]
+            # print(scores,cumul,rando,ind,np.argwhere(rando <= cumul)[0][0])
             if ind not in inds:
                 inds.append(ind)
                 
@@ -70,8 +128,8 @@ class myGA():
         
         return inds
     
-    def new_chromosome_crossover(self,generation,scores):
-        parents = self.select_parents(scores,n_parents=2)
+    def new_chromosome_crossover(self,generation:generation_class):
+        parents = self.select_parents(generation,n_parents=2)
             
         individual1,individual2 = generation[parents[0]],generation[parents[1]]
         new1,new2 = self.crossover(individual1['chromosome'],individual2['chromosome'])
@@ -79,7 +137,7 @@ class myGA():
         
         return new1,new2
     
-    def combine_parents(self,generation,parents):# 
+    def combine_parents(self,generation:generation_class,parents):# 
         out = []
         # print("NEW GEN")
         # print(out)
@@ -154,6 +212,29 @@ class myGA():
         return chromosome
         
     def crossover(self,chromosome1,chromosome2):
+        if False:
+            # Crossover the binary reps # Doesnt work
+            print(chromosome1)
+            print(chromosome2)
+            print(chromosome1.tobytes())
+            b1 = list(chromosome1.tobytes())
+            b2 = list(chromosome2.tobytes())
+            breaks = np.sort(np.random.randint(0,len(b1)+1,2))
+            
+            b1[breaks[0]:],b2[breaks[0]:] = b2[breaks[0]:],b1[breaks[0]:]
+            b1[:breaks[1]],b2[:breaks[1]] = b2[:breaks[1]],b1[:breaks[1]]
+            
+            print(b1,b2)
+            chromosome1 = np.frombuffer(np.buffer(b1))
+            chromosome2 = np.frombuffer(buffer(b2))
+            print(chromosome1)
+            print(chromosome2)
+            
+            input()
+            
+        
+        
+        # Crossover 2 lissts
         breaks = np.sort(np.random.randint(0,len(chromosome1)+1,2))
         
         out1 = chromosome1.copy()
@@ -164,22 +245,22 @@ class myGA():
         
         return out1,out2
         
-    def replace_generation(self,generation,scores,children,children_scores):
+    def replace_generation(self,generation: generation_class,children: generation_class):
         n_individuals = len(generation)
         # Just choose best
         combined = generation + children
-        combined_scores = scores + children_scores
+        combined_scores = combined.serialize('score')
         selected = np.argsort(combined_scores)[-n_individuals:][::-1] # simply the best n
         
-        new_generation = [ combined[ind] for ind in selected ]
-        
+        new_generation = generation.from_list([ combined[ind] for ind in selected ])
         
         return new_generation
         
-    def output_gen(self,fname,gen,generation,scores):
+    def output_gen(self,fname,generation:generation_class):
+        scores = generation.serialize('score')
         with open(fname, 'a') as thefile:
             for i in range(len(generation)):
-                writeline = "%i\t"%gen
+                writeline = "%i\t"%generation.n
                 writeline += np.array2string(generation[i]["chromosome"])
                 writeline += "\t%i\n"%scores[i]
                 thefile.write(writeline)
@@ -205,28 +286,22 @@ class myGA():
         return out
         
         
-def individual_set_chromosome(indi,chromosome):
-    
-    indi['chromosome'] = chromosome
-    indi['ai'].weights = chromosome
-    return indi
-        
+
 
 def main():
-    new_file = False
+    # Some settings
+    new_file = True
     fname = "GA_out.dat"
+    
+    n_individuals = 3
+    n_children = 2
     
     # Setup GA
     theGA = myGA()
     
     # Make generation
-    generation = [ theGA.new_individual(perceptron()) for i in range(8) ]
+    generation = generation_class().from_list([ theGA.new_individual(perceptron()) for i in range(n_individuals) ])
     
-    
-    for individual in generation:
-        individual['ai'].scales[1][0] = SCREEN_HEIGHT
-        individual['ai'].scales[1][1] = SCREEN_WIDTH
-        individual['ai'].scales[1][2] = SCREEN_HEIGHT
     
     # Read file
     if new_file:
@@ -238,66 +313,69 @@ def main():
         gen= len(all_gens)-1
         
         for i, data in enumerate(all_gens[-1]):
-            generation[i] = individual_set_chromosome(generation[i], data[1])
+            generation[i].set_chromosome(data[1])
         
         
         
         
     # Some settings
-    n_children = 8
     
-    WATCH_GAMES = False
+    WATCH_GAMES = True
     
     # testing?
-    testing = False
+    testing = True # Makes scores random
     
     
     n_gen = 5
     # for gen in range(n_gen):
     while True:
-        gen += 1
+        generation.n += 1
         
-        print(" > Start gen",gen)
+        print(" > Start gen",generation.n)
         print(datetime.datetime.now())
-        result = {'scores':[]}
+        
         
         # Test the generation
         print("Eval generation")
-        result['scores'] = theGA.eval_multiple(generation,enable_camera=WATCH_GAMES)
+        generation = theGA.eval_multiple(generation,testing=testing,enable_camera=WATCH_GAMES)
         # for individual in generation:
         #     score = theGA.eval_individual(individual)
         #     result['scores'].append(score)
             # print("DIED",thegame.score)
-            
+        # print(generation)
             
         print(" !Done playing")
-        print(" scores",result['scores'],np.mean(result['scores']))
-        # Write to file
-        theGA.output_gen(fname,gen,generation,result['scores'])
+        scores = generation.serialize('score')
+        print(" scores",scores,np.mean(scores))
         
         # Produce Children
+        print("Breed Children")
         cnt = 0
-        children = []
+        children = generation_class()
         while cnt < n_children:
-            childs_chromosomes = theGA.new_chromosome_crossover(generation,result['scores'])
+            childs_chromosomes = theGA.new_chromosome_crossover(generation)
             
             for child_chromosome in childs_chromosomes: # is a 2-tuple
                 if cnt < n_children:
                     child_chromosome = theGA.nudge_and_mutate_chromosome(child_chromosome)
                     children.append(theGA.new_individual(perceptron()))
-                    individual_set_chromosome(children[-1],child_chromosome)
+                    children[-1].set_chromosome(child_chromosome)
                     cnt += 1
             
         # Test Children
-        print("Play Children")
-        children_scores = []
-        children_scores = theGA.eval_multiple(children,enable_camera=WATCH_GAMES)
+        print("Eval Children")
+        children = theGA.eval_multiple(children,testing=testing,enable_camera=WATCH_GAMES)
         # for i,child in enumerate(children):
         #     score = theGA.eval_individual(child)
         #     children_scores.append(score)
+        print(" scores",children.serialize('score'))
         
         # New generation
-        generation = theGA.replace_generation(generation,result['scores'],children,children_scores)
+        generation = theGA.replace_generation(generation,children)
+        
+        
+        # Write to file
+        theGA.output_gen(fname,generation)
         
 
 if __name__ == "__main__":

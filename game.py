@@ -100,6 +100,7 @@ class MyGame(arcade.Window):
         image_source = ":resources:images/animated_characters/female_person/femalePerson_idle.png"
         if self.multiple_ai:
             self.players_alive = [True for i in self.ai]
+            self.number_alive = len(self.players_alive)
             self.score_list = [ 0 for i in self.ai]
             self.player_sprites = arcade.SpriteList()
             self.physics_engines = []
@@ -195,6 +196,15 @@ class MyGame(arcade.Window):
             arcade.csscolor.WHITE,
             18,
         )
+        if self.multiple_ai:
+            alive_text = f"Alive: {self.number_alive}"
+            arcade.draw_text(
+                alive_text,
+                self.width-150,
+                10,
+                arcade.csscolor.WHITE,
+                18,
+            )
 
     def on_key_press(self, key, modifiers):
         """Called whenever a key is pressed."""
@@ -280,6 +290,7 @@ class MyGame(arcade.Window):
                     
                     for enemy in enemy_hit_list:
                         self.players_alive[i] = False
+                        self.number_alive += -1
                         self.score_list[i] = self.score
                         self.set_sprite_aside(player_sprite,self.SCREEN_WIDTH-i*50,self.SCREEN_HEIGHT-50)
                         # print("Someone died",self.players_alive,self.score_list)
@@ -319,9 +330,10 @@ class MyGame(arcade.Window):
         self.score += 1
         
         if self.score > 10000:
-            for i,alive in enumerate(self.players_alive):
-                if alive:
-                    self.score_list[i] = self.score
+            if multiple_ai:
+                for i,alive in enumerate(self.players_alive):
+                    if alive:
+                        self.score_list[i] = self.score
             self.end_game()
 
         # Position the camera
