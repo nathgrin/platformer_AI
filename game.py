@@ -330,7 +330,7 @@ class MyGame(arcade.Window):
         self.score += 1
         
         if self.score > 10000:
-            if multiple_ai:
+            if self.multiple_ai:
                 for i,alive in enumerate(self.players_alive):
                     if alive:
                         self.score_list[i] = self.score

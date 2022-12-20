@@ -32,11 +32,13 @@ class generation_class(list):
             self.append(entry)
         return self
     
-    def make_filecontent(self):
+    def make_filecontent(self,settings_line=""):
         writeline = "#NEWGEN "+str(self.n)+"\n"
+        if settings_line != "":
+            writeline += settings_line + "\n"
         for individual in self:
             individual_line = individual.make_filecontent()
-            print(individual_line)
+            # print(individual_line)
             writeline += individual_line+"\n"
         return writeline
         
@@ -78,12 +80,58 @@ class individual_class(dict):
                     self[key] = val
         return self
 
-class myGA():
-    def __init__(self,rates={},settings={}):
+class GA_settings(dict):
+    """extends dict,
+    contains settings
+
+    Args:
+        dict (_type_): _description_
+    """
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self,*args, **kwargs)
         
-        self.mutate_rate = rates.get('mutate_rate',0.5)
-        self.nudge_rate = rates.get('nudge_rate',0.)
-        self.nudge_size = settings.get('nudge_size',0.01) # std of normal distr
+        self.set_defaults()
+    
+    def set_defaults(self):
+        self['n_individuals'] = self.get('n_individuals',3)
+        self['n_children'] = self.get('n_children',3)
+        
+    def make_filecontent(self):
+        return "#SETTINGS "+json.dumps(self)
+        return json.dumps({key: self._process_val(key,val) for key,val in self.items()})# if process needed
+    def _process_val(self,key,val):
+        if False:
+            return None
+        else:
+            return val
+        
+    def from_file(self,instr: str):
+        self.__init__(json.loads(instr.replace("#SETTINGS","")))
+        return self
+        
+class myGA():
+    def __init__(self,settings:GA_settings=GA_settings()):
+        
+        self.settings = settings
+        self.set_default_settings()
+        
+    def set_default_settings(self):
+        
+        # Filez
+        self.settings['fname'] = self.settings.get('fname',None)
+        
+        # Generationz
+        self.settings['n_individuals'] = self.settings.get('n_individuals',3)
+        self.settings['n_children'] = self.settings.get('n_children',3)
+        
+        # Rates
+        self.settings['mutate_rate'] = self.settings.get('mutate_rate',0.5)
+        self.settings['nudge_rate'] = self.settings.get('nudge_rate',0.)
+        self.settings['nudge_size'] = self.settings.get('nudge_size',0.01) # std of normal distr
+    
+    def set_settings(self,settings:GA_settings):
+        for key,val in settings.items():
+            self.settings[key] = val
         
         
     def new_individual(self,ai_instance):
@@ -96,7 +144,7 @@ class myGA():
     
         return out
     
-    def eval_individual(self,individual):
+    def eval_individual(self,individual): # I dont think this works anymore
         # return np.random.randint(100,152)
         n_attempts = 3
         
@@ -229,9 +277,9 @@ class myGA():
         return out
     
     def nudge_and_mutate_chromosome(self,chromosome):
-        mutate_rate = self.mutate_rate
-        nudge_rate = self.nudge_rate
-        nudge_size = self.nudge_size
+        mutate_rate = self.settings['mutate_rate']
+        nudge_rate = self.settings['nudge_rate']
+        nudge_size = self.settings['nudge_size']
         
         if np.random.uniform() < mutate_rate:
             ind = np.random.randint(len(chromosome))
@@ -289,7 +337,8 @@ class myGA():
         
     def output_generation(self,fname: str,generation:generation_class):
         
-        writeline = generation.make_filecontent()
+        settings_line = self.settings.make_filecontent()
+        writeline = generation.make_filecontent(settings_line)
         
         
         with open(fname, 'a') as thefile:
@@ -325,45 +374,39 @@ class myGA():
         
         return out
         
-    def get_last_generation_from_file(self,fname:str) -> generation_class:
+    def get_last_generation_from_file(self,fname:str) -> tuple[generation_class, GA_settings]:
         all_lines = self.read_file_rawlines(fname)
         
-        lines = all_lines[-1]
+        generation,settings = self.make_generation_from_lineblock(all_lines[-1])
+        
+        
+        return generation,settings
+    
+    def make_generation_from_lineblock(self,lines:list) -> generation_class:
+        
         
         generation = generation_class()
+        settings = GA_settings()
+        
         generation.n = int(lines[0].split()[-1])
         
-        generation.from_list([self.new_individual(perceptron()).from_line(line) for line in lines[1:]])
-        
-        return generation
-        
-
-class GA_settings(dict):
-    """extends dict,
-    contains settings
-
-    Args:
-        dict (_type_): _description_
-    """
-    def __init__(self, *args, **kwargs):
-        dict.__init__(self,*args, **kwargs)
-        
-    def make_filecontent(self):
-        return json.dumps(self)
-        return json.dumps({key: self._process_val(key,val) for key,val in self.items()})# if process needed
-    def _process_val(self,key,val):
-        if False:
-            return None
+        print(lines)
+        if True:
+            i = 2
         else:
-            return val
+            i = 1
+        
+        input()
+        generation.from_list([self.new_individual(perceptron()).from_line(line) for line in lines[i:]])
+        
+        return generation,settings
+
 
 def main():
     # Some settings
     new_file = False
     fname = "GA_out.dat"
     
-    n_individuals = 3
-    n_children = 2
     
     # Setup GA
     theGA = myGA()
@@ -372,14 +415,21 @@ def main():
     # Read file
     if new_file:
         open(fname, 'w').close()
+        
+        
+        n_individuals = 3
+        
+        settings = GA_settings({ 'fname': fname,
+                                
+                                 'n_individuals': n_individuals,
+                                 'n_children': 3,
+                                 
+                                }) 
+        theGA.set_settings(settings)
         generation = generation_class().from_list([ theGA.new_individual(perceptron()) for i in range(n_individuals) ])
     else:
-        generation = theGA.get_last_generation_from_file(fname)
-        n_individuals = len(generation)
-        
-    tst_dict = {'tst': 2}
-    print(tst_dict.tst)
-    input()
+        generation,settings = theGA.get_last_generation_from_file(fname)
+        theGA.set_settings(settings)
         
         
     # Some settings
@@ -397,6 +447,10 @@ def main():
         
         print(" > Start gen",generation.n)
         print(datetime.datetime.now())
+        # Fix the settings
+        n_individuals = theGA.settings['n_individuals']
+        n_children = theGA.settings['n_children']
+        
         
         
         # Test the generation
@@ -416,7 +470,7 @@ def main():
         print("Breed Children")
         cnt = 0
         children = generation_class()
-        while cnt < n_children:
+        while cnt < n_individuals:
             childs_chromosomes = theGA.new_chromosome_crossover(generation)
             
             for child_chromosome in childs_chromosomes: # is a 2-tuple
@@ -440,6 +494,8 @@ def main():
         
         # Write to file
         theGA.output_generation(fname,generation)
+        
+        input()
         
 
 if __name__ == "__main__":
