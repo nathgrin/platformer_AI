@@ -24,11 +24,44 @@ ZOMBIE_SPEED = -7
 # Movement speed of player, in pixels per frame
 PLAYER_MOVEMENT_SPEED = 5
 GRAVITY = 0.75#1
-PLAYER_JUMP_SPEED = 20
+PLAYER_JUMP_SPEED = 17
 
 # GA extra
 WATCH_GAMES = True
 
+
+def signed_distance_between_sprites(sprite1: arcade.Sprite, sprite2: arcade.Sprite) -> float:
+    """distance is signed in x direction"""
+    return np.sign(sprite1.center_x - sprite2.center_x)*arcade.get_distance_between_sprites(sprite1,sprite2)
+
+def get_closest_sprite_positive(sprite: arcade.Sprite, sprite_list: "SpriteList") -> tuple[arcade.Sprite, float]:
+    """
+    Given a Sprite and SpriteList, returns the closest sprite, and its distance.
+
+    STOLEN from pyarcade get_closest_sprite
+
+    :param Sprite sprite: Target sprite
+    :param SpriteList sprite_list: List to search for closest sprite.
+
+    :return: A tuple containing the closest sprite and the minimum distance.
+             If the spritelist is empty we return ``None``.
+    :rtype: Optional[Tuple[Sprite, float]]
+    """
+    if len(sprite_list) == 0:
+        return None
+
+    min_pos = 0
+    min_distance = signed_distance_between_sprites(sprite, sprite_list[min_pos])
+    min_distance = max(0,min_distance) # Only to the right
+    
+    # print(min_distance)
+    for i in range(1, len(sprite_list)):
+        distance = signed_distance_between_sprites(sprite, sprite_list[i])
+        distance = max(0,distance)
+        if distance < min_distance:
+            min_pos = i
+            min_distance = distance
+    return sprite_list[min_pos], min_distance
 
 class MyGame(arcade.Window):
     """
@@ -107,7 +140,7 @@ class MyGame(arcade.Window):
             # print("Add AIs")
             for i in range(len(self.ai)):
                 player_sprite = arcade.Sprite(image_source, CHARACTER_SCALING)
-                player_sprite.center_x = 128
+                player_sprite.center_x = 256
                 player_sprite.center_y = 96
                 player_sprite.alpha = 100
                 self.player_sprites.append(player_sprite)
@@ -119,21 +152,19 @@ class MyGame(arcade.Window):
             self.scene.add_sprite("Player", self.player_sprite)
 
         
-        for y in range(96,5*96,96):
-            spikes = arcade.Sprite(":resources:images/tiles/spikes.png", TILE_SCALING, angle=-90)
-            spikes.center_x = 20
-            spikes.center_y = y
-            self.scene.add_sprite("Spikes", spikes)
+        # Spikewall of death
+        spikes = arcade.Sprite("sprites/spikewall.png",hit_box_algorithm="None")
+        spikes.center_x = 10
+        spikes.center_y = SCREEN_HEIGHT//2
+        self.scene.add_sprite("Spikes", spikes)
         
         
         # Create the ground
-        # This shows using a loop to place multiple sprites horizontally
-        for x in range(0, 1250, 64):
-            wall = arcade.Sprite(":resources:images/tiles/grassMid.png", TILE_SCALING)
-            wall.center_x = x
-            wall.center_y = 32
-            self.scene.add_sprite("Walls", wall)
-        
+        wall = arcade.Sprite("sprites/ground.png", TILE_SCALING)
+        wall.center_x = SCREEN_WIDTH//2
+        wall.center_y = 32
+        self.scene.add_sprite("Walls", wall)
+    
 
         # Put some crates on the ground
         # This shows using a coordinate list to place sprites
@@ -262,7 +293,7 @@ class MyGame(arcade.Window):
         
         # Spawn enemies
         self.spawntimer += 1
-        if self.spawntimer > SPAWN_INTERVAL:
+        if self.spawntimer > SPAWN_INTERVAL: # Perhaps use arcade.schedule()
             
             self.spawn_enemy()
             
@@ -347,24 +378,29 @@ class MyGame(arcade.Window):
             
     def end_game(self):
         arcade.exit()
-            
+    
+    def generate_ai_input(self,player_sprite: arcade.Sprite):
+        self.ai_input[0] = player_sprite.center_y
+        if "Enemies" in self.scene.name_mapping:
+            res = get_closest_sprite_positive(player_sprite,self.scene["Enemies"])
+            if res is not None:
+                closest,min_dist = res
+                self.ai_input[1] = closest.center_x-player_sprite.center_x
+                self.ai_input[2] = closest.center_y
+        else:
+            self.ai_input[1],self.ai_input[2] = 0,0
+        
+        return self.ai_input # 
+    
     def AI_move(self):
         
         if self.multiple_ai:
             for i,ai in enumerate(self.ai):
                 player_sprite = self.player_sprites[i]
-                self.ai_input[0] = player_sprite.center_y
-                if "Enemies" in self.scene.name_mapping:
-                    res = arcade.get_closest_sprite(player_sprite,self.scene["Enemies"])
-                    if res is not None:
-                        closest,min_dist = res
-                        self.ai_input[1] = closest.center_x-player_sprite.center_x
-                        self.ai_input[2] = closest.center_y
-                else:
-                    self.ai_input[1],self.ai_input[2] = 0,0
                 
-                move = self.ai[i].run_net(self.ai_input)
+                the_input = self.generate_ai_input(player_sprite)
                 
+                move = self.ai[i].run_net(the_input)
                 if move == 1:
                     if self.physics_engines[i].can_jump():
                         self.player_sprites[i].change_y = PLAYER_JUMP_SPEED
@@ -394,13 +430,16 @@ class MyGame(arcade.Window):
         if randint == 0:
             self._make_zombie()
         else:
-            self._make_bee(randint)
+            self._make_bee()
             
-    def _make_bee(self,randint):
+    def _make_bee(self):
         zombie = arcade.Sprite(":resources:images/enemies/bee.png", ZOMBIE_SCALING)
+        
+        randint = np.random.randint(16)
+        
         zombie.center_x = SCREEN_WIDTH-50
         zombie.center_y = 96
-        zombie.center_y = 96+randint*90 # ? Why is not same as character?
+        zombie.center_y = 100+randint*30 # ? Why is not same as character?
         
         zombie.change_x = ZOMBIE_SPEED
         
@@ -418,7 +457,6 @@ class MyGame(arcade.Window):
         
         self.scene.add_sprite("Enemies", zombie)
         
-
 
 def main():
     """Main function"""

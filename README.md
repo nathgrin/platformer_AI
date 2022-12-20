@@ -5,3 +5,4 @@ Todo:
  - [] better settings handling
  - [] better scales handling in AI/individual class
  - [] Stop memory leaking???
+ - [] game settings

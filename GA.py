@@ -124,6 +124,9 @@ class myGA():
         self.settings['n_individuals'] = self.settings.get('n_individuals',3)
         self.settings['n_children'] = self.settings.get('n_children',3)
         
+        # Evaluation
+        self.settings['n_attempts'] = self.settings.get('n_attempts',3)
+        
         # Rates
         self.settings['mutate_rate'] = self.settings.get('mutate_rate',0.5)
         self.settings['nudge_rate'] = self.settings.get('nudge_rate',0.)
@@ -167,12 +170,15 @@ class myGA():
             return generation
                 
         # return np.random.randint(100,152)
-        n_attempts = 3
+        n_attempts = self.settings['n_attempts']
         
         thegame = MyGame(enable_camera = enable_camera)
         thegame.ai = generation.serialize('ai')
         thegame.multiple_ai = True
         
+        # Reset scores
+        for i,individual in enumerate(generation):
+                generation[i]['score'] = 0
         
         for i in range(n_attempts): # n attempts for each AI.
             thegame.setup()
@@ -404,7 +410,7 @@ class myGA():
 
 def main():
     # Some settings
-    new_file = False
+    new_file = True
     fname = "GA_out.dat"
     
     
@@ -417,12 +423,12 @@ def main():
         open(fname, 'w').close()
         
         
-        n_individuals = 3
+        n_individuals = 8
         
         settings = GA_settings({ 'fname': fname,
                                 
                                  'n_individuals': n_individuals,
-                                 'n_children': 3,
+                                 'n_children': 8,
                                  
                                 }) 
         theGA.set_settings(settings)
@@ -437,7 +443,7 @@ def main():
     WATCH_GAMES = True
     
     # testing?
-    testing = True # Makes scores random
+    testing = False # Makes scores random
     
     
     n_gen = 5
@@ -445,8 +451,8 @@ def main():
     while True:
         generation.n += 1
         
-        print(" > Start gen",generation.n)
-        print(datetime.datetime.now())
+        print("> Start gen",generation.n)
+        print("  ",datetime.datetime.now())
         # Fix the settings
         n_individuals = theGA.settings['n_individuals']
         n_children = theGA.settings['n_children']
@@ -454,7 +460,7 @@ def main():
         
         
         # Test the generation
-        print("Eval generation")
+        print("  - Eval generation")
         generation = theGA.eval_multiple(generation,testing=testing,enable_camera=WATCH_GAMES)
         # for individual in generation:
         #     score = theGA.eval_individual(individual)
@@ -462,12 +468,12 @@ def main():
             # print("DIED",thegame.score)
         # print(generation)
             
-        print(" !Done playing")
+        print("    !Done playing")
         scores = generation.serialize('score')
-        print(" scores",scores,np.mean(scores))
+        print("    scores",scores,np.mean(scores))
         
         # Produce Children
-        print("Breed Children")
+        print("  - Breed Children")
         cnt = 0
         children = generation_class()
         while cnt < n_individuals:
@@ -481,12 +487,12 @@ def main():
                     cnt += 1
             
         # Test Children
-        print("Eval Children")
+        print("  - Eval Children")
         children = theGA.eval_multiple(children,testing=testing,enable_camera=WATCH_GAMES)
         # for i,child in enumerate(children):
         #     score = theGA.eval_individual(child)
         #     children_scores.append(score)
-        print(" scores",children.serialize('score'))
+        print("    scores",children.serialize('score'))
         
         # New generation
         generation = theGA.replace_generation(generation,children)
@@ -495,7 +501,7 @@ def main():
         # Write to file
         theGA.output_generation(fname,generation)
         
-        input()
+        # input()
         
 
 if __name__ == "__main__":
