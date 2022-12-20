@@ -1,6 +1,7 @@
 """ Lets see..
 """
 import datetime
+import json
 
 from game import *
 
@@ -19,6 +20,9 @@ class generation_class(list):
         
         self.n = -1
     
+    def __add__(self, *args, **kwargs): # Overwrite to return the proper class
+        return generation_class(super().__add__(*args, **kwargs))
+    
     def serialize(self,key:str) -> str:
         return [entry[key] for entry in self]
     
@@ -28,8 +32,15 @@ class generation_class(list):
             self.append(entry)
         return self
     
-    def __add__(self, *args, **kwargs):
-        return generation_class(super().__add__(*args, **kwargs))
+    def make_filecontent(self):
+        writeline = "#NEWGEN "+str(self.n)+"\n"
+        for individual in self:
+            individual_line = individual.make_filecontent()
+            print(individual_line)
+            writeline += individual_line+"\n"
+        return writeline
+        
+    
 
 class individual_class(dict):
     """extends dict,
@@ -46,6 +57,26 @@ class individual_class(dict):
     def set_chromosome(self,chromosome):
         self['chromosome'] = chromosome
         self['ai'].weights = chromosome
+        
+    def make_filecontent(self):
+        return json.dumps({key: self._process_val(key,val) for key,val in self.items()})
+    def _process_val(self,key,val):
+        if key == 'ai':
+            return None
+        elif key == 'chromosome':
+            return val.tolist()
+        
+        else:
+            return val
+        
+    def from_line(self,line):
+        for key,val in json.loads(line).items():
+            if val is not None:
+                if key == "chromosome":
+                    self.set_chromosome(val)
+                else:
+                    self[key] = val
+        return self
 
 class myGA():
     def __init__(self,rates={},settings={}):
@@ -256,9 +287,16 @@ class myGA():
         
         return new_generation
         
-    def output_gen(self,fname,generation:generation_class):
-        scores = generation.serialize('score')
+    def output_gen(self,fname: str,generation:generation_class):
+        
+        writeline = generation.make_filecontent()
+        
+        
         with open(fname, 'a') as thefile:
+            thefile.write(writeline)
+            
+        if False: # Old code
+            scores = generation.serialize('score')
             for i in range(len(generation)):
                 writeline = "%i\t"%generation.n
                 writeline += np.array2string(generation[i]["chromosome"])
@@ -266,31 +304,43 @@ class myGA():
                 thefile.write(writeline)
                 
             
-    def read_file(self,fname):
-        
+    def read_file_rawlines(self,fname: str) -> list:
+        """return all lines of the file, grouped per generation
+
+        Args:
+            fname (str): _description_
+
+        Returns:
+            : _description_
+        """
         out = []
         with open(fname,'r') as thefile:
             for line in thefile:
-                line = line.split('\t')
-                # print(line)
-                # print(int(line[0]) +1 > len(out))
-                if int(line[0]) +1 > len(out):
-                    out.append([])
-                out[-1].append([
-                    int(line[0]),
-                    np.fromstring(line[1].replace('[','').replace(']',''), sep=" "),
-                    int(line[2]) ])
-                
-        # print(out)
-        # input()
+                if len(line) > 7:
+                    if line[:7] == "#NEWGEN":
+                        out.append([])
+                        
+                out[-1].append(line.strip())
+        
         return out
         
+    def get_last_generation_from_file(self,fname:str) -> generation_class:
+        all_lines = self.read_file_rawlines(fname)
+        
+        lines = all_lines[-1]
+        
+        generation = generation_class()
+        generation.n = int(lines[0].split()[-1])
+        
+        generation.from_list([self.new_individual(perceptron()).from_line(line) for line in lines[1:]])
+        
+        return generation
         
 
 
 def main():
     # Some settings
-    new_file = True
+    new_file = False
     fname = "GA_out.dat"
     
     n_individuals = 3
@@ -300,20 +350,13 @@ def main():
     theGA = myGA()
     
     # Make generation
-    generation = generation_class().from_list([ theGA.new_individual(perceptron()) for i in range(n_individuals) ])
-    
-    
     # Read file
     if new_file:
         open(fname, 'w').close()
-        gen = -1
-        
+        generation = generation_class().from_list([ theGA.new_individual(perceptron()) for i in range(n_individuals) ])
     else:
-        all_gens = theGA.read_file(fname)
-        gen= len(all_gens)-1
-        
-        for i, data in enumerate(all_gens[-1]):
-            generation[i].set_chromosome(data[1])
+        generation = theGA.get_last_generation_from_file(fname)
+        n_individuals = len(generation)
         
         
         
