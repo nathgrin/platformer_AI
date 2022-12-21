@@ -48,15 +48,15 @@ def make_data_from_generationlist(all_gens:list)->list:
 def main():
     
     
-    
+    loc = "data/"
     fname = "GA_out.dat"
     
     theGA = myGA()
-    all_gens = theGA.read_file(fname)
+    all_gens = theGA.read_file(loc+fname)
     
     data_arr = make_data_from_generationlist(all_gens)
     
-    print(data_arr)
+    # print(data_arr)
     
     figure = corner.corner(
     data_arr,
@@ -69,7 +69,7 @@ def main():
     
     corner.overplot_points(figure,data_arr,c='r',alpha=0.5)
     
-    plt.savefig("GAout.png")
+    plt.savefig(loc+"GA_corner.png")
     plt.show()
     
 if __name__ == "__main__":

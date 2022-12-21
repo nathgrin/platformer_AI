@@ -23,8 +23,9 @@ ZOMBIE_SPEED = -7
 
 # Movement speed of player, in pixels per frame
 PLAYER_MOVEMENT_SPEED = 5
-GRAVITY = 0.75#1
-PLAYER_JUMP_SPEED = 17
+GRAVITY = 1
+PLAYER_JUMP_SPEED = 15
+NUMBER_OF_JUMPS = 2 # includes the first jump
 
 # GA extra
 WATCH_GAMES = True
@@ -79,7 +80,7 @@ class MyGame(arcade.Window):
         # Initialize AI
         self.ai = None
         self.multiple_ai = False
-        self.ai_input = np.array([0,0,0])
+        self.ai_input = np.array([0,0,0,0])
         self.players_alive = None
         
         self.score_list = None
@@ -197,6 +198,7 @@ class MyGame(arcade.Window):
                 self.physics_engines.append(arcade.PhysicsEnginePlatformer(
                     self.player_sprites[i], gravity_constant=GRAVITY, walls=self.scene["Walls"]
                 ))
+                self.physics_engines[-1].enable_multi_jump(NUMBER_OF_JUMPS)
         else:
             self.physics_engine = arcade.PhysicsEnginePlatformer(
                 self.player_sprite, gravity_constant=GRAVITY, walls=self.scene["Walls"]
@@ -379,16 +381,18 @@ class MyGame(arcade.Window):
     def end_game(self):
         arcade.exit()
     
-    def generate_ai_input(self,player_sprite: arcade.Sprite):
-        self.ai_input[0] = player_sprite.center_y
+    def generate_ai_input(self,player_sprite: arcade.Sprite, physics_engine:arcade.PhysicsEnginePlatformer):
+        self.ai_input[0] = int(physics_engine.can_jump())
+        
+        self.ai_input[1] = player_sprite.center_y
         if "Enemies" in self.scene.name_mapping:
             res = get_closest_sprite_positive(player_sprite,self.scene["Enemies"])
             if res is not None:
                 closest,min_dist = res
-                self.ai_input[1] = closest.center_x-player_sprite.center_x
-                self.ai_input[2] = closest.center_y
+                self.ai_input[2] = closest.center_x-player_sprite.center_x
+                self.ai_input[3] = closest.center_y
         else:
-            self.ai_input[1],self.ai_input[2] = 0,0
+            self.ai_input[2],self.ai_input[3] = 0,0
         
         return self.ai_input # 
     
@@ -398,12 +402,14 @@ class MyGame(arcade.Window):
             for i,ai in enumerate(self.ai):
                 player_sprite = self.player_sprites[i]
                 
-                the_input = self.generate_ai_input(player_sprite)
+                the_input = self.generate_ai_input(player_sprite,self.physics_engines[i])
                 
                 move = self.ai[i].run_net(the_input)
                 if move == 1:
                     if self.physics_engines[i].can_jump():
-                        self.player_sprites[i].change_y = PLAYER_JUMP_SPEED
+                        # self.player_sprites[i].change_y = PLAYER_JUMP_SPEED
+                        self.physics_engines[i].jump(PLAYER_JUMP_SPEED) # also calls increment_jump_counter
+                        
                 
             
             
@@ -469,9 +475,10 @@ def main():
     
     
     for i in range(len(window.ai)):
-        window.ai[i].scales[1][0] = SCREEN_HEIGHT
-        window.ai[i].scales[1][1] = SCREEN_WIDTH
-        window.ai[i].scales[1][2] = SCREEN_HEIGHT
+        # window.ai[i].scales[1][0] = 1
+        window.ai[i].scales[1][1] = SCREEN_HEIGHT
+        window.ai[i].scales[1][2] = SCREEN_WIDTH
+        window.ai[i].scales[1][3] = SCREEN_HEIGHT
     
     
     arcade.run()

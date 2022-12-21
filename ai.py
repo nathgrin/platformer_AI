@@ -5,7 +5,7 @@ import numpy as np
     
     
 class perceptron():
-    def __init__(self, n=4,weights=None):
+    def __init__(self, n=5,weights=None):
         
         self.n = n
         

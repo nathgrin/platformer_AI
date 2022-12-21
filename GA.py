@@ -96,6 +96,8 @@ class GA_settings(dict):
         self['n_individuals'] = self.get('n_individuals',3)
         self['n_children'] = self.get('n_children',3)
         
+        self['n_inputs'] = self.get('n_inputs',4)
+        
     def make_filecontent(self):
         return "#SETTINGS "+json.dumps(self)
         return json.dumps({key: self._process_val(key,val) for key,val in self.items()})# if process needed
@@ -120,6 +122,10 @@ class myGA():
         # Filez
         self.settings['fname'] = self.settings.get('fname',None)
         
+        
+        # Individuals
+        self.settings['n_inputs'] = self.settings.get('n_inputs',4)
+        
         # Generationz
         self.settings['n_individuals'] = self.settings.get('n_individuals',3)
         self.settings['n_children'] = self.settings.get('n_children',3)
@@ -141,9 +147,10 @@ class myGA():
         
         out = individual_class({'chromosome':ai_instance.weights,'ai':ai_instance,'score':-1})
         
-        out['ai'].scales[1][0] = SCREEN_HEIGHT
-        out['ai'].scales[1][1] = SCREEN_WIDTH
-        out['ai'].scales[1][2] = SCREEN_HEIGHT
+        # out['ai'].scales[1][0] = 1
+        out['ai'].scales[1][1] = SCREEN_HEIGHT
+        out['ai'].scales[1][2] = SCREEN_WIDTH
+        out['ai'].scales[1][3] = SCREEN_HEIGHT
     
         return out
     
@@ -176,10 +183,12 @@ class myGA():
         thegame.ai = generation.serialize('ai')
         thegame.multiple_ai = True
         
+        
+        
         # Reset scores
         for i,individual in enumerate(generation):
                 generation[i]['score'] = 0
-        
+                
         for i in range(n_attempts): # n attempts for each AI.
             thegame.setup()
         
@@ -213,10 +222,9 @@ class myGA():
         
         return inds
     
-    def new_chromosome_crossover(self,generation:generation_class):
-        parents = self.select_parents(generation,n_parents=2)
+    def new_chromosome_crossover(self,generation:generation_class,parent_inds:list):
             
-        individual1,individual2 = generation[parents[0]],generation[parents[1]]
+        individual1,individual2 = generation[parent_inds[0]],generation[parent_inds[1]]
         new1,new2 = self.crossover(individual1['chromosome'],individual2['chromosome'])
         
         
@@ -229,7 +237,7 @@ class myGA():
         
         cnt = 0
         
-        n_children = 8
+        n_children = self.settings['children']
         # print(parents)
         
         # Mate until enough children
@@ -295,6 +303,32 @@ class myGA():
             chromosome[ind] += np.random.normal(scale=nudge_size)
             chromosome[ind] = max(-1.,min(1.,chromosome[ind]))
         return chromosome
+    
+    def make_baby(self,generation: generation_class):
+        randint = np.random.randint(15)
+        randint = 6
+        if randint <3: # Random baby
+            childs_chromosomes = ( np.random.uniform(-1.,1.,len(generation[0]['chromosome'])), )
+            # print(childs_chromosomes)
+        elif randint <7: # Mutated baby
+            parent_inds = self.select_parents(generation,n_parents=1)
+            childs_chromosomes = ( generation[parent_inds[0]]['chromosome'], )
+            # random number of random mutations
+            for ind in np.random.randint(0,len(childs_chromosomes[0]),np.random.randint(len(childs_chromosomes[0])-1)):
+                childs_chromosomes[0][ind] = np.random.uniform(-1.,1.)
+            print(childs_chromosomes)
+            
+            
+            # parent_inds = self.select_parents(generation,n_parents=2)
+            # childs_chromosomes= self.new_chromosome_crossover(generation,parent_inds)
+            # print(childs_chromosomes)
+            # input()
+        elif randint > 0: # Crossover baby
+            parent_inds = self.select_parents(generation,n_parents=2)
+            childs_chromosomes= self.new_chromosome_crossover(generation,parent_inds)
+        
+        return childs_chromosomes
+        
         
     def crossover(self,chromosome1,chromosome2):
         if False:
@@ -336,7 +370,7 @@ class myGA():
         combined = generation + children
         combined_scores = combined.serialize('score')
         selected = np.argsort(combined_scores)[-n_individuals:][::-1] # simply the best n
-        
+        print(selected)
         new_generation = generation.from_list([ combined[ind] for ind in selected ])
         
         return new_generation
@@ -412,7 +446,8 @@ class myGA():
         else:
             i = 1
         
-        generation.from_list([self.new_individual(perceptron()).from_line(line) for line in lines[i:]])
+        n_inputs = settings.get("n_inputs")
+        generation.from_list([self.new_individual(perceptron(n=settings['n_inputs']+1)).from_line(line) for line in lines[i:]])
         
         return generation,settings
 
@@ -420,6 +455,7 @@ class myGA():
 def main():
     # Some settings
     new_file = True
+    loc = "data/"
     fname = "GA_out.dat"
     
     
@@ -429,21 +465,25 @@ def main():
     # Make generation
     # Read file
     if new_file:
-        open(fname, 'w').close()
+        open(loc+fname, 'w').close()
         
         
         n_individuals = 8
         
-        settings = GA_settings({ 'fname': fname,
+        settings = GA_settings({ 'loc': loc,
+                                 'fname': fname,
                                 
                                  'n_individuals': n_individuals,
                                  'n_children': 8,
                                  
+                                 
+                                 'n_inputs': 4
+                                 
                                 }) 
         theGA.set_settings(settings)
-        generation = generation_class().from_list([ theGA.new_individual(perceptron()) for i in range(n_individuals) ])
+        generation = generation_class().from_list([ theGA.new_individual(perceptron(n=settings['n_inputs']+1)) for i in range(n_individuals) ])
     else:
-        generation,settings = theGA.get_last_generation_from_file(fname)
+        generation,settings = theGA.get_last_generation_from_file(loc+fname)
         theGA.set_settings(settings)
         
         
@@ -466,7 +506,9 @@ def main():
         n_individuals = theGA.settings['n_individuals']
         n_children = theGA.settings['n_children']
         
+        n_inputs = theGA.settings['n_inputs'] # for ai
         
+        # print(n_children)
         
         # Test the generation
         print("  - Eval generation")
@@ -485,13 +527,13 @@ def main():
         print("  - Breed Children")
         cnt = 0
         children = generation_class()
-        while cnt < n_individuals:
-            childs_chromosomes = theGA.new_chromosome_crossover(generation)
+        while cnt < n_children:
+            childs_chromosomes = theGA.make_baby(generation)
             
-            for child_chromosome in childs_chromosomes: # is a 2-tuple
+            for child_chromosome in childs_chromosomes: # crossover gives 2-tuple
                 if cnt < n_children:
                     child_chromosome = theGA.nudge_and_mutate_chromosome(child_chromosome)
-                    children.append(theGA.new_individual(perceptron()))
+                    children.append(theGA.new_individual(perceptron(n=n_inputs+1)))
                     children[-1].set_chromosome(child_chromosome)
                     cnt += 1
             
@@ -508,7 +550,7 @@ def main():
         
         
         # Write to file
-        theGA.output_generation(fname,generation)
+        theGA.output_generation(loc+fname,generation)
         
         # input()
         
