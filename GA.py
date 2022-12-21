@@ -145,7 +145,7 @@ class myGA():
         
     def new_individual(self,ai_instance):
         
-        out = individual_class({'chromosome':ai_instance.weights,'ai':ai_instance,'score':-1})
+        out = individual_class({'chromosome':ai_instance.weights,'ai':ai_instance,'score':-1,'id':"G.P1.P2.R.M"})
         
         # out['ai'].scales[1][0] = 1
         out['ai'].scales[1][1] = SCREEN_HEIGHT
@@ -173,7 +173,7 @@ class myGA():
     def eval_multiple(self,generation: generation_class,testing=False,enable_camera=True):
         if testing:
             for i,individual in enumerate(generation):
-                generation[i]['score'] += np.random.randint(100,200)
+                generation[i]['score'] = np.random.randint(100,200)
             return generation
                 
         # return np.random.randint(100,152)
@@ -279,55 +279,69 @@ class myGA():
         
     def nudge_and_mutate_chromosomes(self,chromosomes):
         out = chromosomes
+        id_strs = ["" for x in out]
         # Nudge and mutate
         for i in range(len(out)):
-            out[i] = self.nudge_and_mutate_chromosome(out[i])
+            out[i],id_str[i] = self.nudge_and_mutate_chromosome(out[i])
             
             
         # print(generation)
         # print(out)
         
         # input()
-        return out
+        return out,id_str
+    
     
     def nudge_and_mutate_chromosome(self,chromosome):
         mutate_rate = self.settings['mutate_rate']
         nudge_rate = self.settings['nudge_rate']
         nudge_size = self.settings['nudge_size']
         
+        id_str = ""
         if np.random.uniform() < mutate_rate:
             ind = np.random.randint(len(chromosome))
             chromosome[ind] = np.random.uniform(-1.,1.)
+            id_str += "%02i"%(ind)
         if np.random.uniform() < nudge_rate:
             ind = np.random.randint(len(chromosome))
             chromosome[ind] += np.random.normal(scale=nudge_size)
             chromosome[ind] = max(-1.,min(1.,chromosome[ind]))
-        return chromosome
+            id_str += "%02i"%(ind)
+        return chromosome,id_str
     
-    def make_baby(self,generation: generation_class):
-        randint = np.random.randint(15)
-        randint = 6
-        if randint <3: # Random baby
+    def make_baby(self,generation: generation_class)->list:
+        
+        # yes we'll get these from settings at some point
+        makebaby_fullrandom_proportion = 3
+        makebaby_mutatebaby_proportion = 6
+        makebaby_crossover_proportion = 12
+        
+        tot = makebaby_fullrandom_proportion + makebaby_mutatebaby_proportion + makebaby_crossover_proportion
+        
+        rando = np.random.uniform(tot)
+        
+        if rando < makebaby_fullrandom_proportion: # Random baby
             childs_chromosomes = ( np.random.uniform(-1.,1.,len(generation[0]['chromosome'])), )
+            chromo_id = "G%i.P1.P2.R.M"%(generation.n)
             # print(childs_chromosomes)
-        elif randint <7: # Mutated baby
+        elif rando < makebaby_mutatebaby_proportion: # Mutated baby
             parent_inds = self.select_parents(generation,n_parents=1)
-            childs_chromosomes = ( generation[parent_inds[0]]['chromosome'], )
+            childs_chromosomes = generation[parent_inds[0]]['chromosome'].copy()
             # random number of random mutations
-            for ind in np.random.randint(0,len(childs_chromosomes[0]),np.random.randint(len(childs_chromosomes[0])-1)):
-                childs_chromosomes[0][ind] = np.random.uniform(-1.,1.)
-            print(childs_chromosomes)
+            chromo_id = "G%i.P1%i.P2.M.M"%(generation.n,hash(generation[parent_inds[0]]))
+            for ind in np.random.permutation(len(childs_chromosomes))[:np.random.randint(1,len(childs_chromosomes)-1)]:
+                chromo_id += "%02i"%(ind)
+                childs_chromosomes[ind] = np.random.uniform(-1.,1.)
+            childs_chromosomes = (childs_chromosomes,)
             
             
-            # parent_inds = self.select_parents(generation,n_parents=2)
-            # childs_chromosomes= self.new_chromosome_crossover(generation,parent_inds)
-            # print(childs_chromosomes)
-            # input()
-        elif randint > 0: # Crossover baby
+        else : # Crossover baby
             parent_inds = self.select_parents(generation,n_parents=2)
             childs_chromosomes= self.new_chromosome_crossover(generation,parent_inds)
+            
+            chromo_id = "G%i.P1%i.P2%i.CO.M"%(generation.n,hash(generation[parent_inds[0]]),hash(generation[parent_inds[0]]))
         
-        return childs_chromosomes
+        return childs_chromosomes,chromo_id
         
         
     def crossover(self,chromosome1,chromosome2):
@@ -370,7 +384,7 @@ class myGA():
         combined = generation + children
         combined_scores = combined.serialize('score')
         selected = np.argsort(combined_scores)[-n_individuals:][::-1] # simply the best n
-        print(selected)
+        
         new_generation = generation.from_list([ combined[ind] for ind in selected ])
         
         return new_generation
@@ -432,6 +446,14 @@ class myGA():
         return generation,settings
     
     def make_generation_from_lineblock(self,lines:list) -> generation_class:
+        """process input from a file. a block of lines which are the generation
+
+        Args:
+            lines (list): _description_
+
+        Returns:
+            generation_class: _description_
+        """
         
         
         generation = generation_class()
@@ -454,7 +476,7 @@ class myGA():
 
 def main():
     # Some settings
-    new_file = True
+    new_file = False
     loc = "data/"
     fname = "GA_out.dat"
     
@@ -492,7 +514,7 @@ def main():
     WATCH_GAMES = True
     
     # testing?
-    testing = False # Makes scores random
+    testing = True # Makes scores random
     
     
     n_gen = 5
@@ -528,13 +550,15 @@ def main():
         cnt = 0
         children = generation_class()
         while cnt < n_children:
-            childs_chromosomes = theGA.make_baby(generation)
+            childs_chromosomes,chromo_id = theGA.make_baby(generation)
             
             for child_chromosome in childs_chromosomes: # crossover gives 2-tuple
                 if cnt < n_children:
-                    child_chromosome = theGA.nudge_and_mutate_chromosome(child_chromosome)
+                    child_chromosome,id_str = theGA.nudge_and_mutate_chromosome(child_chromosome)
+                    chromo_id += id_str
                     children.append(theGA.new_individual(perceptron(n=n_inputs+1)))
                     children[-1].set_chromosome(child_chromosome)
+                    children[-1]['id'] = chromo_id
                     cnt += 1
             
         # Test Children
@@ -548,6 +572,8 @@ def main():
         # New generation
         generation = theGA.replace_generation(generation,children)
         
+        print(generation)
+        input("WAIT AFTER REPLACE")
         
         # Write to file
         theGA.output_generation(loc+fname,generation)

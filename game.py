@@ -20,11 +20,16 @@ ZOMBIE_SCALING = 0.7
 # Enemy stuff
 SPAWN_INTERVAL = 150
 ZOMBIE_SPEED = -7
-
+ENEMY_SPAWN_X = SCREEN_WIDTH-50
+        
+BEE_Y_N_INTERVAL = 15
+BEE_MIN_Y = 100
+BEE_MAX_Y = 300
+        
 # Movement speed of player, in pixels per frame
 PLAYER_MOVEMENT_SPEED = 5
 GRAVITY = 1
-PLAYER_JUMP_SPEED = 15
+PLAYER_JUMP_SPEED = 20
 NUMBER_OF_JUMPS = 2 # includes the first jump
 
 # GA extra
@@ -325,6 +330,7 @@ class MyGame(arcade.Window):
                         self.players_alive[i] = False
                         self.number_alive += -1
                         self.score_list[i] = self.score
+                        self.physics_engines[i].disable_multi_jump()
                         self.set_sprite_aside(player_sprite,self.SCREEN_WIDTH-i*50,self.SCREEN_HEIGHT-50)
                         # print("Someone died",self.players_alive,self.score_list)
                         if sum(self.players_alive) == 0:
@@ -441,11 +447,10 @@ class MyGame(arcade.Window):
     def _make_bee(self):
         zombie = arcade.Sprite(":resources:images/enemies/bee.png", ZOMBIE_SCALING)
         
-        randint = np.random.randint(16)
+        randint = np.random.randint(BEE_Y_N_INTERVAL+1)
         
-        zombie.center_x = SCREEN_WIDTH-50
-        zombie.center_y = 96
-        zombie.center_y = 100+randint*30 # ? Why is not same as character?
+        zombie.center_x = ENEMY_SPAWN_X
+        zombie.center_y = BEE_MIN_Y+randint*(BEE_MAX_Y - BEE_MIN_Y)//BEE_Y_N_INTERVAL # ? Why is not same as character?
         
         zombie.change_x = ZOMBIE_SPEED
         
@@ -455,9 +460,8 @@ class MyGame(arcade.Window):
     def _make_zombie(self):
         
         zombie = arcade.Sprite(":resources:images/animated_characters/zombie/zombie_idle.png", ZOMBIE_SCALING)
-        zombie.center_x = SCREEN_WIDTH-50
-        zombie.center_y = 96
-        zombie.center_y = 96+10 # ? Why is not same as character?
+        zombie.center_x = ENEMY_SPAWN_X
+        zombie.center_y = 96 + 14# ? Why is not same as character?
         
         zombie.change_x = ZOMBIE_SPEED
         
