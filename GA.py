@@ -72,12 +72,17 @@ def make_genome(chromosome: np.array) -> str:
 
 
 class id_manager():
+    """
+    chomo_id: g<generation n>.G<genome>.P<parents g,genome, joint by ; if multiple>.T<babytype Random, Mutated,CrossOver>.M<mutation indices>
+    As of now: IDs are not guaranteed to be unique!
     
+    Returns:
+        _type_: _description_
+    """
     label_order = "gGPTM"
     
     def __init__(self):
         pass
-    # chomo_id: g<generation n>.G<genome>.P<parents g,genome, joint by ; if multiple>.T<babytype Random, Mutated,CrossOver>.M<mutation indices>
     def new_id(self,Gn:int=-1,genome:str="",parents:list=[],babytype:str="",mutation:str="")->str:
         if type(parents) == list:
             parents = self.join_parentvals(parents)
@@ -134,8 +139,7 @@ class individual_class(dict):
         
         self['genome'] = make_genome(chromosome)
         self['id'] = idclass.id_replace_value(self['id'],'G',self['genome'])
-        print(self['genome'])
-        print(self['id'])
+        
     
         
     def make_filecontent(self):
