@@ -3,6 +3,8 @@
 import datetime
 import json
 
+import string
+
 from game import *
 
 
@@ -44,6 +46,76 @@ class generation_class(list):
         
     
 
+def make_genome(chromosome: np.array) -> str:
+    """make a genome from a chromosome
+    convert each value in the chromosome to a letter 1-26 A-Z
+    
+    Args:
+        chromosome (np.array): list of floats
+
+    Returns:
+        str: literally string of letters, one for each val in chromosome
+    """
+    themin = -1.
+    themax = 1.
+    
+    genome = ""
+    for val in chromosome:
+        scaled = 26*(val-themin)/(themax-themin)
+        for i,let in enumerate(string.ascii_uppercase):
+            
+            if scaled <= i+1:
+                genome += let
+                break
+    
+    return genome
+
+
+class id_manager():
+    
+    label_order = "gGPTM"
+    
+    def __init__(self):
+        pass
+    # chomo_id: g<generation n>.G<genome>.P<parents g,genome, joint by ; if multiple>.T<babytype Random, Mutated,CrossOver>.M<mutation indices>
+    def new_id(self,Gn:int=-1,genome:str="",parents:list=[],babytype:str="",mutation:str="")->str:
+        if type(parents) == list:
+            parents = self.join_parentvals(parents)
+        parents = parents.replace('.',',')
+        out_id = "g:%i.G:%s.P:%s.T:%s.M:%s"%(Gn,genome,parents,babytype,mutation)
+        
+        return out_id
+    
+    def get_index_from_label(self,label:str)->int:
+        return self.label_order.index(label)
+    
+    def id_replace_value(self,the_id:str,ind:str,val:str)->str:
+        
+        if type(ind) == str:
+            ind = self.get_index_from_label(ind)
+        
+        splitted = the_id.split('.')
+        second_split = splitted[ind].split(':')
+        second_split[1] = val.replace('.',',').replace(":",";") # Skip the first letter
+        splitted[ind] = ":".join(second_split)
+        
+        return ".".join(splitted)
+    
+    def id_get_value(self,the_id:str,ind:str)->str:
+        
+        if type(ind) == str:
+            ind = self.get_index_from_label(ind)
+        splitted = the_id.split('.')
+        return splitted[ind].split(":")[1]
+    
+    def make_parentval(self,the_id):
+        splitted = the_id.split('.')
+        return ",".join( [x[2:] for x in splitted[:2]]) # skip the labels
+    
+    def join_parentvals(self,vals:list) -> str:
+        return ";".join(vals)
+idclass= id_manager()
+
 class individual_class(dict):
     """extends dict,
     represents an individual
@@ -59,6 +131,12 @@ class individual_class(dict):
     def set_chromosome(self,chromosome):
         self['chromosome'] = chromosome
         self['ai'].weights = chromosome
+        
+        self['genome'] = make_genome(chromosome)
+        self['id'] = idclass.id_replace_value(self['id'],'G',self['genome'])
+        print(self['genome'])
+        print(self['id'])
+    
         
     def make_filecontent(self):
         return json.dumps({key: self._process_val(key,val) for key,val in self.items()})
@@ -145,7 +223,7 @@ class myGA():
         
     def new_individual(self,ai_instance):
         
-        out = individual_class({'chromosome':ai_instance.weights,'ai':ai_instance,'score':-1,'id':"G.P1.P2.R.M"})
+        out = individual_class({'chromosome':ai_instance.weights,'ai':ai_instance,'score':-1,'id':idclass.new_id()})
         
         # out['ai'].scales[1][0] = 1
         out['ai'].scales[1][1] = SCREEN_HEIGHT
@@ -282,14 +360,14 @@ class myGA():
         id_strs = ["" for x in out]
         # Nudge and mutate
         for i in range(len(out)):
-            out[i],id_str[i] = self.nudge_and_mutate_chromosome(out[i])
+            out[i],id_strs[i] = self.nudge_and_mutate_chromosome(out[i])
             
             
         # print(generation)
         # print(out)
         
         # input()
-        return out,id_str
+        return out,id_strs
     
     
     def nudge_and_mutate_chromosome(self,chromosome):
@@ -311,6 +389,9 @@ class myGA():
     
     def make_baby(self,generation: generation_class)->list:
         
+            
+        idclass = id_manager()
+        
         # yes we'll get these from settings at some point
         makebaby_fullrandom_proportion = 3
         makebaby_mutatebaby_proportion = 6
@@ -322,16 +403,18 @@ class myGA():
         
         if rando < makebaby_fullrandom_proportion: # Random baby
             childs_chromosomes = ( np.random.uniform(-1.,1.,len(generation[0]['chromosome'])), )
-            chromo_id = "G%i.P1.P2.R.M"%(generation.n)
+            chromo_id = idclass.new_id(Gn=generation.n , babytype="R")
             # print(childs_chromosomes)
         elif rando < makebaby_mutatebaby_proportion: # Mutated baby
             parent_inds = self.select_parents(generation,n_parents=1)
             childs_chromosomes = generation[parent_inds[0]]['chromosome'].copy()
             # random number of random mutations
-            chromo_id = "G%i.P1%i.P2.M.M"%(generation.n,hash(generation[parent_inds[0]]))
+            chromo_id = idclass.new_id(Gn=generation.n , parents=idclass.make_parentval(generation[parent_inds[0]]['id']), babytype="M")
+            chromo_id_mutation = ""
             for ind in np.random.permutation(len(childs_chromosomes))[:np.random.randint(1,len(childs_chromosomes)-1)]:
-                chromo_id += "%02i"%(ind)
+                chromo_id_mutation += "%02i"%(ind)
                 childs_chromosomes[ind] = np.random.uniform(-1.,1.)
+            chromo_id = idclass.id_replace_value(chromo_id,"M",chromo_id_mutation)
             childs_chromosomes = (childs_chromosomes,)
             
             
@@ -339,7 +422,8 @@ class myGA():
             parent_inds = self.select_parents(generation,n_parents=2)
             childs_chromosomes= self.new_chromosome_crossover(generation,parent_inds)
             
-            chromo_id = "G%i.P1%i.P2%i.CO.M"%(generation.n,hash(generation[parent_inds[0]]),hash(generation[parent_inds[0]]))
+            parent_ids = [idclass.make_parentval(generation[parent_inds[0]]['id']),idclass.make_parentval(generation[parent_inds[1]]['id'])]
+            chromo_id = idclass.new_id(Gn=generation.n, parents = parent_ids, babytype="CO")
         
         return childs_chromosomes,chromo_id
         
@@ -476,7 +560,7 @@ class myGA():
 
 def main():
     # Some settings
-    new_file = False
+    new_file = True
     loc = "data/"
     fname = "GA_out.dat"
     
@@ -504,6 +588,10 @@ def main():
                                 }) 
         theGA.set_settings(settings)
         generation = generation_class().from_list([ theGA.new_individual(perceptron(n=settings['n_inputs']+1)) for i in range(n_individuals) ])
+        # Fix ids:
+        for individual in generation:
+            individual['id'] = idclass.id_replace_value(individual['id'],'g',"0")
+            individual['id'] = idclass.id_replace_value(individual['id'],'G',make_genome(individual['chromosome']))
     else:
         generation,settings = theGA.get_last_generation_from_file(loc+fname)
         theGA.set_settings(settings)
@@ -511,7 +599,7 @@ def main():
         
     # Some settings
     
-    WATCH_GAMES = True
+    WATCH_GAMES = False
     
     # testing?
     testing = True # Makes scores random
@@ -543,6 +631,7 @@ def main():
             
         print("    !Done playing")
         scores = generation.serialize('score')
+        print("        ID",generation.serialize('id'))
         print("    scores",scores,np.mean(scores))
         
         # Produce Children
@@ -554,11 +643,11 @@ def main():
             
             for child_chromosome in childs_chromosomes: # crossover gives 2-tuple
                 if cnt < n_children:
-                    child_chromosome,id_str = theGA.nudge_and_mutate_chromosome(child_chromosome)
-                    chromo_id += id_str
+                    child_chromosome,chromo_id_mutation = theGA.nudge_and_mutate_chromosome(child_chromosome)
+                    chromo_id = idclass.id_replace_value(chromo_id,"M",idclass.id_get_value(chromo_id,"M")+chromo_id_mutation)
                     children.append(theGA.new_individual(perceptron(n=n_inputs+1)))
+                    children[-1]['id'] = chromo_id # first set id, set_chromosome will update the chromosome
                     children[-1].set_chromosome(child_chromosome)
-                    children[-1]['id'] = chromo_id
                     cnt += 1
             
         # Test Children
@@ -567,6 +656,7 @@ def main():
         # for i,child in enumerate(children):
         #     score = theGA.eval_individual(child)
         #     children_scores.append(score)
+        print("        ID",children.serialize('id'))
         print("    scores",children.serialize('score'))
         
         # New generation
