@@ -2,8 +2,8 @@
 Platformer Game
 """
 import arcade
-import numpy as np
 from ai import perceptron
+from misc_func import *
 
 
 # Constants

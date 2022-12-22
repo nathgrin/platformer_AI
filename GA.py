@@ -1,12 +1,8 @@
 """ Lets see..
 """
-import datetime
-import json
-
-import string
 
 from game import *
-
+from misc_func import *
 
 class generation_class(list):
     """extends list,
@@ -473,6 +469,9 @@ class myGA():
         combined_scores = combined.serialize('score')
         selected = np.argsort(combined_scores)[-n_individuals:][::-1] # simply the best n
         
+        
+        print(2*"    "+"selected:"," ".join([ "%i+%i"%(n_individuals* (i//n_individuals),i%n_individuals) for i in selected]))
+        
         new_generation = generation.from_list([ combined[ind] for ind in selected ])
         
         return new_generation
@@ -615,7 +614,7 @@ def main():
         generation.n += 1
         
         print("> Start gen",generation.n)
-        print("  ",datetime.datetime.now())
+        print(" ",datetime.datetime.now())
         # Fix the settings
         n_individuals = theGA.settings['n_individuals']
         n_children = theGA.settings['n_children']
@@ -632,11 +631,13 @@ def main():
         #     result['scores'].append(score)
             # print("DIED",thegame.score)
         # print(generation)
-            
+        
+
         print("    !Done playing")
         scores = generation.serialize('score')
-        print("        ID",generation.serialize('id'))
-        print("    scores",scores,np.mean(scores))
+        ids = generation.serialize('id')
+        print("    scores","mean:",np.mean(scores))
+        print(fmt_score_log(scores,ids))
         
         # Produce Children
         print("  - Breed Children")
@@ -660,14 +661,15 @@ def main():
         # for i,child in enumerate(children):
         #     score = theGA.eval_individual(child)
         #     children_scores.append(score)
-        print("        ID",children.serialize('id'))
-        print("    scores",children.serialize('score'))
+        scores = children.serialize('score')
+        ids = children.serialize('id')
+        print("    scores","mean:",np.mean(scores))
+        print(fmt_score_log(scores,ids))
         
         # New generation
         generation = theGA.replace_generation(generation,children)
         
-        print(generation)
-        input("WAIT AFTER REPLACE")
+        
         
         # Write to file
         theGA.output_generation(loc+fname,generation)
