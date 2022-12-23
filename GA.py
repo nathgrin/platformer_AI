@@ -563,10 +563,11 @@ class myGA():
 
 def main():
     # Some settings
-    new_file = True
+    new_file = False
     loc = "data/"
     fname = "GA_out.dat"
     
+    print(make_genome([0.96804840333239, -0.7832400110631503, -0.35330159640945613, -0.9326598832855191, 0.530784518290786]))
     
     # Setup GA
     theGA = myGA()
@@ -602,10 +603,10 @@ def main():
         
     # Some settings
     
-    WATCH_GAMES = False
+    WATCH_GAMES = True
     
     # testing?
-    testing = True # Makes scores random
+    testing = False # Makes scores random
     
     
     n_gen = 5

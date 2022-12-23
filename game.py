@@ -19,12 +19,13 @@ ZOMBIE_SCALING = 0.7
 
 # Enemy stuff
 SPAWN_INTERVAL = 150
+SPAWN_INTERVAL_WINDOW = 20
 ZOMBIE_SPEED = -7
 ENEMY_SPAWN_X = SCREEN_WIDTH-50
         
 BEE_Y_N_INTERVAL = 15
 BEE_MIN_Y = 100
-BEE_MAX_Y = 300
+BEE_MAX_Y = 600
         
 # Movement speed of player, in pixels per frame
 PLAYER_MOVEMENT_SPEED = 5
@@ -195,7 +196,9 @@ class MyGame(arcade.Window):
             
             
         # For incrementing spawns
-        self.spawntimer = SPAWN_INTERVAL-5 # spawn almost immediately
+        self.spawntimer = 0 # spawn almost immediately
+        self.next_spawn = SPAWN_INTERVAL
+        self.spawn_enemy()
 
         # Create the 'physics engine'
         if self.multiple_ai:
@@ -300,11 +303,12 @@ class MyGame(arcade.Window):
         
         # Spawn enemies
         self.spawntimer += 1
-        if self.spawntimer > SPAWN_INTERVAL: # Perhaps use arcade.schedule()
+        if self.spawntimer > self.next_spawn: # Perhaps use arcade.schedule()
             
             self.spawn_enemy()
             
             self.spawntimer = 0
+            self.next_spawn = np.random.randint(SPAWN_INTERVAL-SPAWN_INTERVAL_WINDOW,SPAWN_INTERVAL+SPAWN_INTERVAL_WINDOW)
         
         # move ai players if multiple
         if self.multiple_ai:
