@@ -48,7 +48,7 @@ def make_data_from_generationlist(all_gens:list)->list:
     return np.array(out)
 
 
-def make_cornerplot(all_gens):
+def make_cornerplot(loc,all_gens):
     
     data_arr = make_data_from_generationlist(all_gens)
     
@@ -206,9 +206,9 @@ def main():
     theGA = myGA()
     all_gens = theGA.read_file(loc+fname)
     
-    # make_cornerplot(all_gens)
+    make_cornerplot(loc,all_gens)
     
-    make_family_tree(all_gens)
+    # make_family_tree(loc,all_gens)
     
     
 if __name__ == "__main__":

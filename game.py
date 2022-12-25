@@ -20,6 +20,7 @@ ZOMBIE_SCALING = 0.7
 # Enemy stuff
 SPAWN_INTERVAL = 150
 SPAWN_INTERVAL_WINDOW = 20
+DOUBLESPAWN_INTERVAL_WINDOW = 50
 ZOMBIE_SPEED = -7
 ENEMY_SPAWN_X = SCREEN_WIDTH-50
         
@@ -30,7 +31,7 @@ BEE_MAX_Y = 600
 # Movement speed of player, in pixels per frame
 PLAYER_MOVEMENT_SPEED = 5
 GRAVITY = 1
-PLAYER_JUMP_SPEED = 20
+PLAYER_JUMP_SPEED = 18
 NUMBER_OF_JUMPS = 2 # includes the first jump
 
 # GA extra
@@ -63,12 +64,34 @@ def get_closest_sprite_positive(sprite: arcade.Sprite, sprite_list: arcade.Sprit
     
     # print(min_distance)
     for i in range(1, len(sprite_list)):
-        distance = signed_distance_between_sprites(sprite, sprite_list[i])
+        distance = signed_distance_between_sprites(sprite_list[i],sprite)
         distance = max(0,distance)
         if distance < min_distance:
             min_pos = i
             min_distance = distance
     return sprite_list[min_pos], min_distance
+
+
+def get_enemies_sorted_by_distance_positive(sprite: arcade.Sprite, sprite_list: arcade.SpriteList) -> tuple[arcade.Sprite, float]:
+    """
+
+    """
+    if len(sprite_list) == 0:
+        return None
+
+    distances = []
+    
+    for i in range(len(sprite_list)):
+        distance = signed_distance_between_sprites(sprite_list[i],sprite)
+    
+        if distance > 0:
+            distances.append(distance)  
+    if len(distances) == 0:
+        return None
+    sort = np.argsort(distances)
+    
+    sorted_sprite_list = [sprite_list[ind] for ind in sort]
+    return sorted_sprite_list
 
 class MyGame(arcade.Window):
     """
@@ -86,10 +109,13 @@ class MyGame(arcade.Window):
         # Initialize AI
         self.ai = None
         self.multiple_ai = False
-        self.ai_input = np.array([0,0,0,0])
+        self.ai_input = np.arange(6)
         self.players_alive = None
         
         self.score_list = None
+        
+        # Enemy spawns
+        self.toggle_spawn = 1
         
         # Our Scene Object
         self.scene = None
@@ -308,8 +334,14 @@ class MyGame(arcade.Window):
             self.spawn_enemy()
             
             self.spawntimer = 0
-            self.next_spawn = np.random.randint(SPAWN_INTERVAL-SPAWN_INTERVAL_WINDOW,SPAWN_INTERVAL+SPAWN_INTERVAL_WINDOW)
-        
+            
+            if self.toggle_spawn: # big interval
+                self.next_spawn = np.random.randint(SPAWN_INTERVAL-SPAWN_INTERVAL_WINDOW,SPAWN_INTERVAL+SPAWN_INTERVAL_WINDOW)
+            else: # Short interval
+                self.next_spawn = np.random.randint(DOUBLESPAWN_INTERVAL_WINDOW)
+
+            self.toggle_spawn = 1-self.toggle_spawn
+            
         # move ai players if multiple
         if self.multiple_ai:
             self.scene["Players"].update()
@@ -393,16 +425,21 @@ class MyGame(arcade.Window):
     
     def generate_ai_input(self,player_sprite: arcade.Sprite, physics_engine:arcade.PhysicsEnginePlatformer):
         self.ai_input[0] = int(physics_engine.can_jump())
-        
+        # print('gen ai')
         self.ai_input[1] = player_sprite.center_y
+        self.ai_input[2],self.ai_input[3] = 0.,0.
+        self.ai_input[3],self.ai_input[4] = 0.,0.
         if "Enemies" in self.scene.name_mapping:
-            res = get_closest_sprite_positive(player_sprite,self.scene["Enemies"])
-            if res is not None:
-                closest,min_dist = res
-                self.ai_input[2] = closest.center_x-player_sprite.center_x
-                self.ai_input[3] = closest.center_y
-        else:
-            self.ai_input[2],self.ai_input[3] = 0,0
+            
+            sorted_spritelist = get_enemies_sorted_by_distance_positive(player_sprite,self.scene["Enemies"])
+            
+            if sorted_spritelist is not None:
+                for i,enemy in enumerate(sorted_spritelist):
+                    if i == 2:
+                        break
+                    
+                    self.ai_input[2*i+2] = enemy.center_x-player_sprite.center_x
+                    self.ai_input[2*i+3] = enemy.center_y
         
         return self.ai_input # 
     
@@ -448,6 +485,9 @@ class MyGame(arcade.Window):
         else:
             self._make_bee()
             
+        
+        # if self.second_spawn_timer
+        
     def _make_bee(self):
         zombie = arcade.Sprite(":resources:images/enemies/bee.png", ZOMBIE_SCALING)
         
@@ -476,7 +516,7 @@ def main():
     """Main function"""
     window = MyGame()
     
-    window.ai = [ perceptron() for i in range(8) ]
+    window.ai = [ perceptron(n=7) for i in range(8) ]
     window.multiple_ai = True
     
     window.setup()
@@ -487,6 +527,8 @@ def main():
         window.ai[i].scales[1][1] = SCREEN_HEIGHT
         window.ai[i].scales[1][2] = SCREEN_WIDTH
         window.ai[i].scales[1][3] = SCREEN_HEIGHT
+        window.ai[i].scales[1][4] = SCREEN_WIDTH
+        window.ai[i].scales[1][5] = SCREEN_HEIGHT
     
     
     arcade.run()

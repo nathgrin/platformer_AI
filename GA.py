@@ -563,7 +563,7 @@ class myGA():
 
 def main():
     # Some settings
-    new_file = False
+    new_file = True
     loc = "data/"
     fname = "GA_out.dat"
     
@@ -578,16 +578,16 @@ def main():
         open(loc+fname, 'w').close()
         
         
-        n_individuals = 8
+        n_individuals = 24
         
         settings = GA_settings({ 'loc': loc,
                                  'fname': fname,
                                 
                                  'n_individuals': n_individuals,
-                                 'n_children': 8,
+                                 'n_children': n_individuals,
                                  
                                  
-                                 'n_inputs': 4
+                                 'n_inputs': 6
                                  
                                 }) 
         theGA.set_settings(settings)
@@ -603,7 +603,7 @@ def main():
         
     # Some settings
     
-    WATCH_GAMES = True
+    WATCH_GAMES = False
     
     # testing?
     testing = False # Makes scores random
