@@ -31,8 +31,12 @@ BEE_MAX_Y = 600
 # Movement speed of player, in pixels per frame
 PLAYER_MOVEMENT_SPEED = 5
 GRAVITY = 1
-PLAYER_JUMP_SPEED = 18
-NUMBER_OF_JUMPS = 2 # includes the first jump
+PLAYER_JUMP_SPEED = 7
+NUMBER_OF_JUMPS = 1 # includes the first jump
+
+PLAYER_MAX_FUEL = 20
+PLAYER_FUEL_PER_TICK = 1
+
 
 # GA extra
 WATCH_GAMES = True
@@ -93,6 +97,11 @@ def get_enemies_sorted_by_distance_positive(sprite: arcade.Sprite, sprite_list: 
     sorted_sprite_list = [sprite_list[ind] for ind in sort]
     return sorted_sprite_list
 
+class player_sprite_class(arcade.Sprite):
+    
+    fuel = PLAYER_MAX_FUEL
+    
+    
 class MyGame(arcade.Window):
     """
     Main application class.
@@ -172,7 +181,7 @@ class MyGame(arcade.Window):
             self.physics_engines = []
             # print("Add AIs")
             for i in range(len(self.ai)):
-                player_sprite = arcade.Sprite(image_source, CHARACTER_SCALING)
+                player_sprite = player_sprite_class(image_source, CHARACTER_SCALING)
                 player_sprite.center_x = 256
                 player_sprite.center_y = 96
                 player_sprite.alpha = 100
@@ -232,7 +241,7 @@ class MyGame(arcade.Window):
                 self.physics_engines.append(arcade.PhysicsEnginePlatformer(
                     self.player_sprites[i], gravity_constant=GRAVITY, walls=self.scene["Walls"]
                 ))
-                self.physics_engines[-1].enable_multi_jump(NUMBER_OF_JUMPS)
+                # self.physics_engines[-1].enable_multi_jump(NUMBER_OF_JUMPS)
         else:
             self.physics_engine = arcade.PhysicsEnginePlatformer(
                 self.player_sprite, gravity_constant=GRAVITY, walls=self.scene["Walls"]
@@ -367,7 +376,7 @@ class MyGame(arcade.Window):
                         self.number_alive += -1
                         self.score_list[i] = self.score
                         self.physics_engines[i].disable_multi_jump()
-                        self.set_sprite_aside(player_sprite,self.SCREEN_WIDTH-i*50,self.SCREEN_HEIGHT-50)
+                        self.set_sprite_aside(player_sprite,self.SCREEN_WIDTH*(1-i/len(self.players_alive)),self.SCREEN_HEIGHT-50)
                         # print("Someone died",self.players_alive,self.score_list)
                         if sum(self.players_alive) == 0:
                             self.end_game()
@@ -424,7 +433,7 @@ class MyGame(arcade.Window):
         arcade.exit()
     
     def generate_ai_input(self,player_sprite: arcade.Sprite, physics_engine:arcade.PhysicsEnginePlatformer):
-        self.ai_input[0] = int(physics_engine.can_jump())
+        self.ai_input[0] = player_sprite.fuel
         # print('gen ai')
         self.ai_input[1] = player_sprite.center_y
         self.ai_input[2],self.ai_input[3] = 0.,0.
@@ -440,6 +449,9 @@ class MyGame(arcade.Window):
                     
                     self.ai_input[2*i+2] = enemy.center_x-player_sprite.center_x
                     self.ai_input[2*i+3] = enemy.center_y
+                if len(sorted_spritelist) == 1: # Duplicate the first enemy if theres only 1
+                    self.ai_input[2*1+2] = enemy.center_x-player_sprite.center_x
+                    self.ai_input[2*1+3] = enemy.center_y
         
         return self.ai_input # 
     
@@ -447,15 +459,24 @@ class MyGame(arcade.Window):
         
         if self.multiple_ai:
             for i,ai in enumerate(self.ai):
+                if not self.players_alive[i]:
+                    continue
                 player_sprite = self.player_sprites[i]
+                physics_engine = self.physics_engines[i]
                 
-                the_input = self.generate_ai_input(player_sprite,self.physics_engines[i])
+                the_input = self.generate_ai_input(player_sprite,physics_engine)
                 
                 move = self.ai[i].run_net(the_input)
                 if move == 1:
-                    if self.physics_engines[i].can_jump():
-                        # self.player_sprites[i].change_y = PLAYER_JUMP_SPEED
-                        self.physics_engines[i].jump(PLAYER_JUMP_SPEED) # also calls increment_jump_counter
+                    if physics_engine.can_jump() or player_sprite.fuel > 0:
+                        self.player_sprites[i].change_y = PLAYER_JUMP_SPEED
+                        if player_sprite.fuel > 0:
+                            # print(player_sprite.fuel)
+                            player_sprite.fuel += -PLAYER_FUEL_PER_TICK
+                        else:
+                            player_sprite.fuel = PLAYER_MAX_FUEL
+                        
+                        # self.physics_engines[i].jump(PLAYER_JUMP_SPEED) # also calls increment_jump_counter
                         
                 
             

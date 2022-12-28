@@ -215,6 +215,12 @@ class myGA():
         self.settings['mutate_rate'] = self.settings.get('mutate_rate',0.5)
         self.settings['nudge_rate'] = self.settings.get('nudge_rate',0.)
         self.settings['nudge_size'] = self.settings.get('nudge_size',0.01) # std of normal distr
+        
+        # Make baby settings
+        self.settings['makebaby_fullrandom_proportion'] = self.settings.get('makebaby_fullrandom_proportion',1)
+        self.settings['makebaby_mutatebaby_proportion'] = self.settings.get('makebaby_mutatebaby_proportion',2)
+        self.settings['makebaby_crossover_proportion']  = self.settings.get('makebaby_crossover_proportion',2)
+        
     
     def set_settings(self,settings:GA_settings):
         for key,val in settings.items():
@@ -225,10 +231,12 @@ class myGA():
         
         out = individual_class({'chromosome':ai_instance.weights,'ai':ai_instance,'score':-1,'id':idclass.new_id()})
         
-        # out['ai'].scales[1][0] = 1
+        out['ai'].scales[1][0] = PLAYER_MAX_FUEL
         out['ai'].scales[1][1] = SCREEN_HEIGHT
         out['ai'].scales[1][2] = SCREEN_WIDTH
         out['ai'].scales[1][3] = SCREEN_HEIGHT
+        out['ai'].scales[1][4] = SCREEN_WIDTH
+        out['ai'].scales[1][5] = SCREEN_HEIGHT
     
         return out
     
@@ -393,9 +401,9 @@ class myGA():
         idclass = id_manager()
         
         # yes we'll get these from settings at some point
-        makebaby_fullrandom_proportion = 3
-        makebaby_mutatebaby_proportion = 6
-        makebaby_crossover_proportion = 12
+        makebaby_fullrandom_proportion = self.settings['makebaby_fullrandom_proportion']
+        makebaby_mutatebaby_proportion = self.settings['makebaby_mutatebaby_proportion']
+        makebaby_crossover_proportion  = self.settings['makebaby_crossover_proportion']
         
         tot = makebaby_fullrandom_proportion + makebaby_mutatebaby_proportion + makebaby_crossover_proportion
         
@@ -586,8 +594,11 @@ def main():
                                  'n_individuals': n_individuals,
                                  'n_children': n_individuals,
                                  
+                                 'n_inputs': 6,
                                  
-                                 'n_inputs': 6
+                                 
+                                 'n_attempts': 5,
+                                 
                                  
                                 }) 
         theGA.set_settings(settings)
@@ -608,6 +619,7 @@ def main():
     # testing?
     testing = False # Makes scores random
     
+    last_time = datetime.datetime.now()
     
     n_gen = 5
     # for gen in range(n_gen):
@@ -615,7 +627,9 @@ def main():
         generation.n += 1
         
         print("> Start gen",generation.n)
-        print(" ",datetime.datetime.now())
+        now_time = datetime.datetime.now()
+        print(" ",now_time,"(",now_time-last_time,")")
+        last_time = now_time
         # Fix the settings
         n_individuals = theGA.settings['n_individuals']
         n_children = theGA.settings['n_children']

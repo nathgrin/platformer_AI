@@ -28,6 +28,7 @@ class perceptron():
         
         self.input_arr[1:] = (input_vals-self.scales[0])/self.scales[1]
         # print(self.input_arr)
+        
         out = np.sum(self.input_arr*self.weights)
         out = self.activation_func(out)
         # print(out)
