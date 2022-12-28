@@ -192,12 +192,14 @@ class GA_settings(dict):
 class myGA():
     def __init__(self,settings:GA_settings=GA_settings()):
         
-        self.settings = settings
+        self.settings = GA_settings()
         self.set_default_settings()
+        self.set_settings(settings)
         
     def set_default_settings(self):
         
         # Filez
+        self.settings['loc'] = self.settings.get('loc',"")
         self.settings['fname'] = self.settings.get('fname',None)
         
         
@@ -219,11 +221,14 @@ class myGA():
         # Make baby settings
         self.settings['makebaby_fullrandom_proportion'] = self.settings.get('makebaby_fullrandom_proportion',1)
         self.settings['makebaby_mutatebaby_proportion'] = self.settings.get('makebaby_mutatebaby_proportion',2)
-        self.settings['makebaby_crossover_proportion']  = self.settings.get('makebaby_crossover_proportion',2)
+        self.settings['makebaby_crossover_proportion']  = self.settings.get('makebaby_crossover_proportion',4)
         
     
     def set_settings(self,settings:GA_settings):
         for key,val in settings.items():
+            print(key,val)
+            if key not in self.settings.keys():
+                print("WARNING: Did not recognize key: %s. Did you mean one of:"%(key),self.settings.keys(),"?")
             self.settings[key] = val
         
         
@@ -596,9 +601,13 @@ def main():
                                  
                                  'n_inputs': 6,
                                  
-                                 
                                  'n_attempts': 5,
                                  
+                                 'makebaby_fullrandom_proportion': 1,
+                                 'makebaby_mutatebaby_proportion': 2,
+                                 'makebaby_crossover_proportion': 5,
+                                 
+                                 'tst': 10
                                  
                                 }) 
         theGA.set_settings(settings)

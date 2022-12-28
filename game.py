@@ -21,6 +21,9 @@ ZOMBIE_SCALING = 0.7
 SPAWN_INTERVAL = 150
 SPAWN_INTERVAL_WINDOW = 20
 DOUBLESPAWN_INTERVAL_WINDOW = 50
+ENABLE_DOUBLE_SPAWN = False
+
+
 ZOMBIE_SPEED = -7
 ENEMY_SPAWN_X = SCREEN_WIDTH-50
         
@@ -344,21 +347,23 @@ class MyGame(arcade.Window):
             
             self.spawntimer = 0
             
+            
+            
             if self.toggle_spawn: # big interval
                 self.next_spawn = np.random.randint(SPAWN_INTERVAL-SPAWN_INTERVAL_WINDOW,SPAWN_INTERVAL+SPAWN_INTERVAL_WINDOW)
             else: # Short interval
                 self.next_spawn = np.random.randint(DOUBLESPAWN_INTERVAL_WINDOW)
 
-            self.toggle_spawn = 1-self.toggle_spawn
+            self.toggle_spawn = 1-self.toggle_spawn if ENABLE_DOUBLE_SPAWN else 1
             
         # move ai players if multiple
         if self.multiple_ai:
             self.scene["Players"].update()
                 
                 
-        
-        # Move enemies
+        # ENEMIES
         if "Enemies" in self.scene.name_mapping:
+            # Move enemies
             self.scene["Enemies"].update()
             
             # Hit enemies
