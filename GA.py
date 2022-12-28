@@ -226,7 +226,7 @@ class myGA():
     
     def set_settings(self,settings:GA_settings):
         for key,val in settings.items():
-            print(key,val)
+            # print(key,val)
             if key not in self.settings.keys():
                 print("WARNING: Did not recognize key: %s. Did you mean one of:"%(key),self.settings.keys(),"?")
             self.settings[key] = val
@@ -234,7 +234,7 @@ class myGA():
         
     def new_individual(self,ai_instance):
         
-        out = individual_class({'chromosome':ai_instance.weights,'ai':ai_instance,'score':-1,'id':idclass.new_id()})
+        out = individual_class({'chromosome':ai_instance.weights,'ai':ai_instance,'score':1,'id':idclass.new_id()})
         
         out['ai'].scales[1][0] = PLAYER_MAX_FUEL
         out['ai'].scales[1][1] = SCREEN_HEIGHT
@@ -475,17 +475,16 @@ class myGA():
         
         return out1,out2
         
-    def replace_generation(self,generation: generation_class,children: generation_class):
-        n_individuals = len(generation)
+    def replace_generation(self,combined: generation_class,old_generation: generation_class):
+        n_individuals = self.settings['n_individuals']
         # Just choose best
-        combined = generation + children
         combined_scores = combined.serialize('score')
         selected = np.argsort(combined_scores)[-n_individuals:][::-1] # simply the best n
         
         
         print(2*"    "+"selected:"," ".join([ "%i+%i"%(n_individuals* (i//n_individuals),i%n_individuals) for i in selected]))
         
-        new_generation = generation.from_list([ combined[ind] for ind in selected ])
+        new_generation = old_generation.from_list([ combined[ind] for ind in selected ])
         
         return new_generation
         
@@ -576,7 +575,7 @@ class myGA():
 
 def main():
     # Some settings
-    new_file = True
+    new_file = False
     loc = "data/"
     fname = "GA_out.dat"
     
@@ -591,7 +590,7 @@ def main():
         open(loc+fname, 'w').close()
         
         
-        n_individuals = 24
+        n_individuals = 3
         
         settings = GA_settings({ 'loc': loc,
                                  'fname': fname,
@@ -615,7 +614,9 @@ def main():
         # Fix ids:
         for individual in generation:
             individual['id'] = idclass.id_replace_value(individual['id'],'g',"0")
-            individual['id'] = idclass.id_replace_value(individual['id'],'G',make_genome(individual['chromosome']))
+            genome = make_genome(individual['chromosome'])
+            individual['genome'] = genome
+            individual['id'] = idclass.id_replace_value(individual['id'],'G',genome)
     else:
         generation,settings = theGA.get_last_generation_from_file(loc+fname)
         theGA.set_settings(settings)
@@ -623,7 +624,7 @@ def main():
         
     # Some settings
     
-    WATCH_GAMES = False
+    WATCH_GAMES = True
     
     # testing?
     testing = False # Makes scores random
@@ -639,7 +640,7 @@ def main():
         now_time = datetime.datetime.now()
         print(" ",now_time,"(",now_time-last_time,")")
         last_time = now_time
-        # Fix the settings
+        # Retrieve the settings
         n_individuals = theGA.settings['n_individuals']
         n_children = theGA.settings['n_children']
         
@@ -647,21 +648,7 @@ def main():
         
         # print(n_children)
         
-        # Test the generation
-        print("  - Eval generation")
-        generation = theGA.eval_multiple(generation,testing=testing,enable_camera=WATCH_GAMES)
-        # for individual in generation:
-        #     score = theGA.eval_individual(individual)
-        #     result['scores'].append(score)
-            # print("DIED",thegame.score)
-        # print(generation)
         
-
-        print("    !Done playing")
-        scores = generation.serialize('score')
-        ids = generation.serialize('id')
-        print("    scores","mean:",np.mean(scores))
-        print(fmt_score_log(scores,ids))
         
         # Produce Children
         print("  - Breed Children")
@@ -678,20 +665,28 @@ def main():
                     children[-1]['id'] = chromo_id # first set id, set_chromosome will update the chromosome
                     children[-1].set_chromosome(child_chromosome)
                     cnt += 1
-            
-        # Test Children
-        print("  - Eval Children")
-        children = theGA.eval_multiple(children,testing=testing,enable_camera=WATCH_GAMES)
-        # for i,child in enumerate(children):
-        #     score = theGA.eval_individual(child)
-        #     children_scores.append(score)
-        scores = children.serialize('score')
-        ids = children.serialize('id')
+        
+        combined = generation + children
+        
+        # Test the generation
+        print("  - Eval Everyone")
+        combined = theGA.eval_multiple(combined,testing=testing,enable_camera=WATCH_GAMES)
+        # for individual in generation:
+        #     score = theGA.eval_individual(individual)
+        #     result['scores'].append(score)
+            # print("DIED",thegame.score)
+        # print(generation)
+        
+
+        print("    !Done playing")
+        scores = generation.serialize('score')
+        ids = generation.serialize('id')
         print("    scores","mean:",np.mean(scores))
         print(fmt_score_log(scores,ids))
         
+        
         # New generation
-        generation = theGA.replace_generation(generation,children)
+        generation = theGA.replace_generation(combined,generation)
         
         
         

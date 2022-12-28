@@ -460,6 +460,19 @@ class MyGame(arcade.Window):
         
         return self.ai_input # 
     
+    def do_jump(self,player_sprite,physics_engine):
+        
+        if physics_engine.can_jump() or player_sprite.fuel > 0:
+            player_sprite.change_y = PLAYER_JUMP_SPEED
+            if player_sprite.fuel > 0:
+                # print(player_sprite.fuel)
+                player_sprite.fuel += -PLAYER_FUEL_PER_TICK
+            else:
+                player_sprite.fuel = PLAYER_MAX_FUEL
+            
+            # self.physics_engines[i].jump(PLAYER_JUMP_SPEED) # also calls increment_jump_counter
+            
+    
     def AI_move(self):
         
         if self.multiple_ai:
@@ -470,19 +483,11 @@ class MyGame(arcade.Window):
                 physics_engine = self.physics_engines[i]
                 
                 the_input = self.generate_ai_input(player_sprite,physics_engine)
-                
+                # if i < 2:
+                #     print(the_input)
                 move = self.ai[i].run_net(the_input)
                 if move == 1:
-                    if physics_engine.can_jump() or player_sprite.fuel > 0:
-                        self.player_sprites[i].change_y = PLAYER_JUMP_SPEED
-                        if player_sprite.fuel > 0:
-                            # print(player_sprite.fuel)
-                            player_sprite.fuel += -PLAYER_FUEL_PER_TICK
-                        else:
-                            player_sprite.fuel = PLAYER_MAX_FUEL
-                        
-                        # self.physics_engines[i].jump(PLAYER_JUMP_SPEED) # also calls increment_jump_counter
-                        
+                    self.do_jump(player_sprite,physics_engine)
                 
             
             
