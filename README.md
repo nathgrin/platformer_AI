@@ -11,3 +11,5 @@ Todo:
 - [] game settings
 - [] more genetic variation e.g., by not picking simply top n
 - [] make checks for genetic diversity
+- [] check what happens if continue with different settings from file
+- [] throrough check jump mechanic..

@@ -467,7 +467,7 @@ class MyGame(arcade.Window):
             if player_sprite.fuel > 0:
                 # print(player_sprite.fuel)
                 player_sprite.fuel += -PLAYER_FUEL_PER_TICK
-            else:
+            if physics_engine.can_jump():
                 player_sprite.fuel = PLAYER_MAX_FUEL
             
             # self.physics_engines[i].jump(PLAYER_JUMP_SPEED) # also calls increment_jump_counter

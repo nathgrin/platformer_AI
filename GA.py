@@ -228,7 +228,7 @@ class myGA():
         for key,val in settings.items():
             # print(key,val)
             if key not in self.settings.keys():
-                print("WARNING: Did not recognize key: %s. Did you mean one of:"%(key),self.settings.keys(),"?")
+                print("WARNING: myGA.set_settings did not recognize key: %s. Did you mean one of:"%(key),self.settings.keys(),"?")
             self.settings[key] = val
         
         
@@ -411,14 +411,16 @@ class myGA():
         makebaby_crossover_proportion  = self.settings['makebaby_crossover_proportion']
         
         tot = makebaby_fullrandom_proportion + makebaby_mutatebaby_proportion + makebaby_crossover_proportion
+        cumul = [makebaby_fullrandom_proportion,makebaby_fullrandom_proportion + makebaby_mutatebaby_proportion, makebaby_fullrandom_proportion + makebaby_mutatebaby_proportion+ makebaby_crossover_proportion]
+        rando = np.random.uniform(0.,tot)
+        # print(rando,makebaby_fullrandom_proportion,makebaby_mutatebaby_proportion,makebaby_crossover_proportion)
         
-        rando = np.random.uniform(tot)
-        
-        if rando < makebaby_fullrandom_proportion: # Random baby
+        if rando < cumul[0]: # Random baby
             childs_chromosomes = ( np.random.uniform(-1.,1.,len(generation[0]['chromosome'])), )
             chromo_id = idclass.new_id(Gn=generation.n , babytype="R")
             # print(childs_chromosomes)
-        elif rando < makebaby_mutatebaby_proportion: # Mutated baby
+            # print("random")
+        elif rando < cumul[1]: # Mutated baby
             parent_inds = self.select_parents(generation,n_parents=1)
             childs_chromosomes = generation[parent_inds[0]]['chromosome'].copy()
             # random number of random mutations
@@ -430,6 +432,7 @@ class myGA():
             chromo_id = idclass.id_replace_value(chromo_id,"M",chromo_id_mutation)
             childs_chromosomes = (childs_chromosomes,)
             
+            # print("mutated")
             
         else : # Crossover baby
             parent_inds = self.select_parents(generation,n_parents=2)
@@ -438,6 +441,7 @@ class myGA():
             parent_ids = [idclass.make_parentval(generation[parent_inds[0]]['id']),idclass.make_parentval(generation[parent_inds[1]]['id'])]
             chromo_id = idclass.new_id(Gn=generation.n, parents = parent_ids, babytype="CO")
         
+            # print("crossover")
         return childs_chromosomes,chromo_id
         
         
@@ -590,7 +594,7 @@ def main():
         open(loc+fname, 'w').close()
         
         
-        n_individuals = 3
+        n_individuals = 24
         
         settings = GA_settings({ 'loc': loc,
                                  'fname': fname,
@@ -606,7 +610,6 @@ def main():
                                  'makebaby_mutatebaby_proportion': 2,
                                  'makebaby_crossover_proportion': 5,
                                  
-                                 'tst': 10
                                  
                                 }) 
         theGA.set_settings(settings)
@@ -614,9 +617,8 @@ def main():
         # Fix ids:
         for individual in generation:
             individual['id'] = idclass.id_replace_value(individual['id'],'g',"0")
-            genome = make_genome(individual['chromosome'])
-            individual['genome'] = genome
-            individual['id'] = idclass.id_replace_value(individual['id'],'G',genome)
+            individual['genome'] = make_genome(individual['chromosome'])
+            individual['id'] = idclass.id_replace_value(individual['id'],'G',individual['genome'])
     else:
         generation,settings = theGA.get_last_generation_from_file(loc+fname)
         theGA.set_settings(settings)
@@ -624,7 +626,7 @@ def main():
         
     # Some settings
     
-    WATCH_GAMES = True
+    WATCH_GAMES = False
     
     # testing?
     testing = False # Makes scores random
@@ -679,9 +681,9 @@ def main():
         
 
         print("    !Done playing")
-        scores = generation.serialize('score')
-        ids = generation.serialize('id')
-        print("    scores","mean:",np.mean(scores))
+        scores = combined.serialize('score')
+        ids = combined.serialize('id')
+        print("    scores","quantiles [0,0.5,0.75,1]:",np.quantile(scores,(0,0.5,0.75,1.)))
         print(fmt_score_log(scores,ids))
         
         
