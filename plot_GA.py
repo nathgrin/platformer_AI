@@ -120,7 +120,7 @@ def text_with_autofit(
     adjusted_size = props.get_size_in_points() * rect_width / w * subpixels
     props.set_size(adjusted_size)
 
-    text: Annotation = ax.annotate(txt, xy, ha=ha, va=va, xycoords=transform, fontproperties=props, **kwargs)
+    text: mpl.text.Annotation = ax.annotate(txt, xy, ha=ha, va=va, xycoords=transform, fontproperties=props, **kwargs)
 
     if show_rect:
         rect = mpl.patches.Rectangle(a0, width, height, fill=False, ls='--')

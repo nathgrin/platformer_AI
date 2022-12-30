@@ -196,7 +196,7 @@ class myGA():
         self.set_default_settings()
         self.set_settings(settings)
         
-    def set_default_settings(self):
+    def set_default_settings(self): # this self.settings.get thing doesnt make sense anymore
         
         # Filez
         self.settings['loc'] = self.settings.get('loc',"")
@@ -223,6 +223,11 @@ class myGA():
         self.settings['makebaby_mutatebaby_proportion'] = self.settings.get('makebaby_mutatebaby_proportion',2)
         self.settings['makebaby_crossover_proportion']  = self.settings.get('makebaby_crossover_proportion',4)
         
+        self.settings['makebaby_fullrandom_proportion_default'] = self.settings.get('makebaby_fullrandom_proportion',1)
+        self.settings['makebaby_mutatebaby_proportion_default'] = self.settings.get('makebaby_mutatebaby_proportion',2)
+        self.settings['makebaby_fullrandom_proportion_morevariation'] = 3*self.settings.get('makebaby_fullrandom_proportion',1)
+        self.settings['makebaby_mutatebaby_proportion_morevariation'] = 3*self.settings.get('makebaby_mutatebaby_proportion',2)
+        
     
     def set_settings(self,settings:GA_settings):
         for key,val in settings.items():
@@ -240,8 +245,8 @@ class myGA():
         out['ai'].scales[1][1] = SCREEN_HEIGHT
         out['ai'].scales[1][2] = SCREEN_WIDTH
         out['ai'].scales[1][3] = SCREEN_HEIGHT
-        out['ai'].scales[1][4] = SCREEN_WIDTH
-        out['ai'].scales[1][5] = SCREEN_HEIGHT
+        # out['ai'].scales[1][4] = SCREEN_WIDTH
+        # out['ai'].scales[1][5] = SCREEN_HEIGHT
     
         return out
     
@@ -249,7 +254,7 @@ class myGA():
         # return np.random.randint(100,152)
         n_attempts = 3
         
-        thegame = MyGame(enable_camera = WATCH_GAMES)
+        thegame = MyGame(enable_camera = True)
         thegame.ai = individual['ai']
         score = 0
         for i in range(n_attempts): # n attempts for each AI.
@@ -492,6 +497,17 @@ class myGA():
         
         return new_generation
         
+    def check_genetic_variation(self,generation):
+        chromosomes = generation.serialize('chromosome')
+        
+        if np.mean(np.std(np.array(chromosomes).transpose(),axis=1)) < 0.05: # If no variation..
+            self.settings['makebaby_fullrandom_proportion'] = self.settings['makebaby_fullrandom_proportion_morevariation']
+            self.settings['makebaby_mutatebaby_proportion'] = self.settings['makebaby_mutatebaby_proportion_morevariation']
+            print("    !Need More Variation!")
+        else:
+            self.settings['makebaby_fullrandom_proportion'] = self.settings['makebaby_fullrandom_proportion_default']
+            self.settings['makebaby_mutatebaby_proportion'] = self.settings['makebaby_mutatebaby_proportion_default']
+        
     def output_generation(self,fname: str,generation:generation_class):
         
         settings_line = self.settings.make_filecontent()
@@ -577,11 +593,35 @@ class myGA():
         return generation,settings
 
 
+def make_new_GArun(theGA,settings):
+    
+    
+    theGA.set_settings(settings)
+    
+    n_individuals = theGA.settings['n_individuals']
+    
+    generation = generation_class().from_list([ theGA.new_individual(perceptron(n=settings['n_inputs']+1)) for i in range(n_individuals) ])
+    
+    # Fix ids:
+    for individual in generation:
+        individual['id'] = idclass.id_replace_value(individual['id'],'g',"0")
+        individual['genome'] = make_genome(individual['chromosome'])
+        individual['id'] = idclass.id_replace_value(individual['id'],'G',individual['genome'])
+        individual['id'] = idclass.id_replace_value(individual['id'],'T',"R")
+
+    return theGA,generation
+    
+    
 def main():
     # Some settings
     new_file = False
     loc = "data/"
     fname = "GA_out.dat"
+    
+    watch_games = True
+    
+    # testing?
+    testing = False # Makes scores random
     
     print(make_genome([0.96804840333239, -0.7832400110631503, -0.35330159640945613, -0.9326598832855191, 0.530784518290786]))
     
@@ -602,7 +642,7 @@ def main():
                                  'n_individuals': n_individuals,
                                  'n_children': n_individuals,
                                  
-                                 'n_inputs': 6,
+                                 'n_inputs': 4,
                                  
                                  'n_attempts': 5,
                                  
@@ -612,24 +652,13 @@ def main():
                                  
                                  
                                 }) 
-        theGA.set_settings(settings)
-        generation = generation_class().from_list([ theGA.new_individual(perceptron(n=settings['n_inputs']+1)) for i in range(n_individuals) ])
-        # Fix ids:
-        for individual in generation:
-            individual['id'] = idclass.id_replace_value(individual['id'],'g',"0")
-            individual['genome'] = make_genome(individual['chromosome'])
-            individual['id'] = idclass.id_replace_value(individual['id'],'G',individual['genome'])
-    else:
+        
+        theGA, generation = make_new_GArun(theGA,settings)
+    else: # Read from file 
         generation,settings = theGA.get_last_generation_from_file(loc+fname)
         theGA.set_settings(settings)
         
         
-    # Some settings
-    
-    WATCH_GAMES = False
-    
-    # testing?
-    testing = False # Makes scores random
     
     last_time = datetime.datetime.now()
     
@@ -642,7 +671,12 @@ def main():
         now_time = datetime.datetime.now()
         print(" ",now_time,"(",now_time-last_time,")")
         last_time = now_time
+        
+        # Check stuff if need change settings
+        theGA.check_genetic_variation(generation)
+        
         # Retrieve the settings
+        
         n_individuals = theGA.settings['n_individuals']
         n_children = theGA.settings['n_children']
         
@@ -672,7 +706,7 @@ def main():
         
         # Test the generation
         print("  - Eval Everyone")
-        combined = theGA.eval_multiple(combined,testing=testing,enable_camera=WATCH_GAMES)
+        combined = theGA.eval_multiple(combined,testing=testing,enable_camera=watch_games)
         # for individual in generation:
         #     score = theGA.eval_individual(individual)
         #     result['scores'].append(score)

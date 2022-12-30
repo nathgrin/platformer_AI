@@ -42,7 +42,7 @@ PLAYER_FUEL_PER_TICK = 1
 
 
 # GA extra
-WATCH_GAMES = True
+
 
 
 def signed_distance_between_sprites(sprite1: arcade.Sprite, sprite2: arcade.Sprite) -> float:
@@ -96,6 +96,7 @@ def get_enemies_sorted_by_distance_positive(sprite: arcade.Sprite, sprite_list: 
     if len(distances) == 0:
         return None
     sort = np.argsort(distances)
+    # print([distances[ind] for ind in sort])
     
     sorted_sprite_list = [sprite_list[ind] for ind in sort]
     return sorted_sprite_list
@@ -438,25 +439,26 @@ class MyGame(arcade.Window):
         arcade.exit()
     
     def generate_ai_input(self,player_sprite: arcade.Sprite, physics_engine:arcade.PhysicsEnginePlatformer):
+        self.ai_input = np.zeros(4)
         self.ai_input[0] = player_sprite.fuel
         # print('gen ai')
         self.ai_input[1] = player_sprite.center_y
         self.ai_input[2],self.ai_input[3] = 0.,0.
-        self.ai_input[3],self.ai_input[4] = 0.,0.
+        # self.ai_input[4],self.ai_input[5] = 0.,0.
         if "Enemies" in self.scene.name_mapping:
             
             sorted_spritelist = get_enemies_sorted_by_distance_positive(player_sprite,self.scene["Enemies"])
             
             if sorted_spritelist is not None:
-                for i,enemy in enumerate(sorted_spritelist):
+                for i,enemy in enumerate([sorted_spritelist[0]]):
                     if i == 2:
                         break
                     
                     self.ai_input[2*i+2] = enemy.center_x-player_sprite.center_x
                     self.ai_input[2*i+3] = enemy.center_y
-                if len(sorted_spritelist) == 1: # Duplicate the first enemy if theres only 1
-                    self.ai_input[2*1+2] = enemy.center_x-player_sprite.center_x
-                    self.ai_input[2*1+3] = enemy.center_y
+                # if len(sorted_spritelist) == 1: # Duplicate the first enemy if theres only 1
+                #     self.ai_input[2*1+2] = enemy.center_x-player_sprite.center_x
+                #     self.ai_input[2*1+3] = enemy.center_y
         
         return self.ai_input # 
     
@@ -485,7 +487,7 @@ class MyGame(arcade.Window):
                 the_input = self.generate_ai_input(player_sprite,physics_engine)
                 # if i < 2:
                 #     print(the_input)
-                move = self.ai[i].run_net(the_input)
+                move = ai.run_net(the_input)
                 if move == 1:
                     self.do_jump(player_sprite,physics_engine)
                 
@@ -547,8 +549,9 @@ def main():
     """Main function"""
     window = MyGame()
     
-    window.ai = [ perceptron(n=7) for i in range(8) ]
+    window.ai = [ perceptron(n=5) for i in range(1) ]
     window.multiple_ai = True
+    window.ai_input = np.zeros(4)
     
     window.setup()
     
@@ -558,8 +561,8 @@ def main():
         window.ai[i].scales[1][1] = SCREEN_HEIGHT
         window.ai[i].scales[1][2] = SCREEN_WIDTH
         window.ai[i].scales[1][3] = SCREEN_HEIGHT
-        window.ai[i].scales[1][4] = SCREEN_WIDTH
-        window.ai[i].scales[1][5] = SCREEN_HEIGHT
+        # window.ai[i].scales[1][4] = SCREEN_WIDTH
+        # window.ai[i].scales[1][5] = SCREEN_HEIGHT
     
     
     arcade.run()

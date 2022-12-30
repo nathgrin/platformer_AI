@@ -13,3 +13,4 @@ Todo:
 - [] make checks for genetic diversity
 - [] check what happens if continue with different settings from file
 - [] throrough check jump mechanic..
+- [] move generate_ai_input to a better spot..
