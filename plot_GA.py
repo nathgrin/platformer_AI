@@ -56,7 +56,7 @@ def make_cornerplot(loc,all_gens):
     
     figure = corner.corner(
     data_arr,
-    labels=[ r"gen" ] + [r"w%i"%(i) for i in range(1,len(data_arr[0])-1)] +[r"score"] ,
+    labels=[ r"gen" ] + [r"w%i"%(i-1) for i in range(1,len(data_arr[0])-1)] +[r"score"] ,
     quantiles=[0.16, 0.5, 0.84],
     plot_contours=False,
     show_titles=True,

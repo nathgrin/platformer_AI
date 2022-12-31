@@ -228,6 +228,8 @@ class myGA():
         self.settings['makebaby_fullrandom_proportion_morevariation'] = 3*self.settings.get('makebaby_fullrandom_proportion',1)
         self.settings['makebaby_mutatebaby_proportion_morevariation'] = 3*self.settings.get('makebaby_mutatebaby_proportion',2)
         
+        # Nextgen selection
+        self.settings['keep_best_n'] = self.settings.get('keep_best_n',2*self.settings['n_individuals']//3)
     
     def set_settings(self,settings:GA_settings):
         for key,val in settings.items():
@@ -302,16 +304,22 @@ class myGA():
         scores = generation.serialize('score')
         # probability based on score
         inds = []
-        powers = np.power(scores,2,dtype='f8')
-        powers = powers/sum(powers)
-        cumul = np.cumsum(powers)
+        # powers = np.power(scores,2,dtype='f8')
+        powers = np.array(scores)
+        powers = powers/sum(powers) # normalise
+        # cumul = np.cumsum(powers)
         
-        while len(inds) < n_parents:
-            rando = cumul[-1]*np.random.uniform()
-            ind = np.argwhere(rando <= cumul)[0][0]
-            # print(scores,cumul,rando,ind,np.argwhere(rando <= cumul)[0][0])
-            if ind not in inds:
-                inds.append(ind)
+        inds = np.random.choice(len(generation),n_parents,p=powers)
+        
+        
+        if False:# Old
+            cumul = np.cumsum(powers)
+            while len(inds) < n_parents:
+                rando = cumul[-1]*np.random.uniform()
+                ind = np.argwhere(rando <= cumul)[0][0]
+                # print(scores,cumul,rando,ind,np.argwhere(rando <= cumul)[0][0])
+                if ind not in inds:
+                    inds.append(ind)
                 
         
         
@@ -478,9 +486,10 @@ class myGA():
         
         out1 = chromosome1.copy()
         out2 = chromosome2.copy()
-        out1[breaks[0]:breaks[1]] = chromosome2[breaks[0]:breaks[1]]
         
+        out1[breaks[0]:breaks[1]] = chromosome2[breaks[0]:breaks[1]]
         out2[breaks[0]:breaks[1]] = chromosome1[breaks[0]:breaks[1]]
+        
         
         return out1,out2
         
@@ -488,8 +497,35 @@ class myGA():
         n_individuals = self.settings['n_individuals']
         # Just choose best
         combined_scores = combined.serialize('score')
-        selected = np.argsort(combined_scores)[-n_individuals:][::-1] # simply the best n
         
+        keep_best_n = self.settings.get('keep_best_n',n_individuals)
+        
+        selected = np.argsort(combined_scores)[-keep_best_n:][::-1] # simply the best n
+        
+        # Check if any are the same
+        check_arr = find_equalarray_in_list( combined.serialize('chromosome') )
+        # counts = np.bincount(check_arr)
+        
+        selected = list(np.unique([check_arr[ind] for ind in selected]))
+        
+        # Pick the rest with probability
+    
+        choose_from_inds = [ i for i in range(len(combined)) if check_arr[i] == i and i not in selected]
+        
+        powers = np.array([combined_scores[ind] for ind in choose_from_inds])
+        powers = powers/sum(powers) # normalise
+        
+        inds = list( np.random.choice(choose_from_inds,min(len(choose_from_inds),n_individuals-len(selected)),p=powers) )
+        
+        selected = selected + inds
+        
+        if len(np.unique(check_arr)) < n_individuals:
+            print("    "+"!!WARNING There are not enough UNIQUE individuals in your sample (%i need %i). There will be duplicates."%(len(np.unique(check_arr)),n_individuals))
+        while len(selected) < n_individuals: # If not enough selected yet (shouldnt have happened except if above expection triggered)
+            powers = np.array(combined_scores)
+            powers = powers/np.sum(powers)
+            new = np.random.choice(len(combined_scores),1,p=powers)
+            selected.append(new[0])
         
         print(2*"    "+"selected:"," ".join([ "%i+%i"%(n_individuals* (i//n_individuals),i%n_individuals) for i in selected]))
         
@@ -500,13 +536,21 @@ class myGA():
     def check_genetic_variation(self,generation):
         chromosomes = generation.serialize('chromosome')
         
-        if np.mean(np.std(np.array(chromosomes).transpose(),axis=1)) < 0.05: # If no variation..
+        mean_of_stds = np.mean(np.std(np.array(chromosomes).transpose(),axis=1))
+        # print(mean_of_stds)
+        
+        # if mean_of_stds < 0.5:
+        #     counts = find_equalarray_in_list(generation.serialize('genome'))
+        
+        if mean_of_stds < 0.05: # If no variation..
             self.settings['makebaby_fullrandom_proportion'] = self.settings['makebaby_fullrandom_proportion_morevariation']
             self.settings['makebaby_mutatebaby_proportion'] = self.settings['makebaby_mutatebaby_proportion_morevariation']
             print("    !Need More Variation!")
         else:
             self.settings['makebaby_fullrandom_proportion'] = self.settings['makebaby_fullrandom_proportion_default']
             self.settings['makebaby_mutatebaby_proportion'] = self.settings['makebaby_mutatebaby_proportion_default']
+        
+        
         
     def output_generation(self,fname: str,generation:generation_class):
         
@@ -612,13 +656,30 @@ def make_new_GArun(theGA,settings):
     return theGA,generation
     
     
+def find_equalarray_in_list(inlist):
+    
+    
+    out = list(range(len(inlist)))
+    for i,entry in enumerate(inlist):
+        if out[i] < i:
+            continue
+        for j in range(i+1,len(inlist)):
+            # if inlist[j] == entry:
+            if np.allclose(inlist[j],entry):
+            # if np.all(np.equal(inlist[j],entry)):
+                out[j] = i
+                
+    
+    return out
+    
+    
 def main():
     # Some settings
     new_file = False
     loc = "data/"
     fname = "GA_out.dat"
     
-    watch_games = True
+    watch_games = False
     
     # testing?
     testing = False # Makes scores random
@@ -650,6 +711,7 @@ def main():
                                  'makebaby_mutatebaby_proportion': 2,
                                  'makebaby_crossover_proportion': 5,
                                  
+                                 'keep_best_n': 2*n_individuals//3, # Rest are chosen roulette
                                  
                                 }) 
         
@@ -672,7 +734,7 @@ def main():
         print(" ",now_time,"(",now_time-last_time,")")
         last_time = now_time
         
-        # Check stuff if need change settings
+        # Check stuff if need change settings before breeding
         theGA.check_genetic_variation(generation)
         
         # Retrieve the settings
@@ -724,7 +786,7 @@ def main():
         # New generation
         generation = theGA.replace_generation(combined,generation)
         
-        
+        # input()
         
         # Write to file
         theGA.output_generation(loc+fname,generation)
