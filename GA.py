@@ -292,8 +292,9 @@ class myGA():
         
             arcade.run()
             # arcarde.exit() inside class, then:
-            for i,score in enumerate(thegame.score_list):
-                generation[i]['score'] += score
+            for j,score in enumerate(thegame.score_list):
+                generation[j]['score'] += score
+            
         arcade.close_window()
         return generation
     
@@ -675,11 +676,11 @@ def find_equalarray_in_list(inlist):
     
 def main():
     # Some settings
-    new_file = False
+    new_file = True
     loc = "data/"
     fname = "GA_out.dat"
     
-    watch_games = False
+    watch_games = True
     
     # testing?
     testing = False # Makes scores random

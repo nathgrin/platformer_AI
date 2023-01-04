@@ -40,6 +40,8 @@ NUMBER_OF_JUMPS = 1 # includes the first jump
 PLAYER_MAX_FUEL = 20
 PLAYER_FUEL_PER_TICK = 1
 
+# Game Settings
+MAX_SCORE = 10000
 
 # GA extra
 
@@ -419,7 +421,7 @@ class MyGame(arcade.Window):
         # Increment score each frame!
         self.score += 1
         
-        if self.score > 10000:
+        if self.score > MAX_SCORE:
             if self.multiple_ai:
                 for i,alive in enumerate(self.players_alive):
                     if alive:
