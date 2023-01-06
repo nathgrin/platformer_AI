@@ -6,6 +6,9 @@ import corner
 from typing import Optional,Literal
 import matplotlib as mpl
 
+from GA import idclass
+
+
 ### MatplotlibRCs # See actually misc_func but for now ..
 
 plt.rc('font',family='STIXGeneral',size=20) # STIX looks like latex
@@ -128,7 +131,96 @@ def text_with_autofit(
 
     return text
 
-def make_family_tree(all_gens):
+
+def find_parent(parentvals,parent_val):
+    plist = parent_val.split(',')
+    ngen = int(plist[0])
+    
+    # if ngen == 0:
+    #     return 0,-1
+    
+    # print("PARRNTE",ngen)
+    ind_y = ngen
+    
+    # thegen = all_parentvals[ngen]
+    thegen = parentvals
+    
+    for i,val in enumerate(thegen):
+        # print(val,parent_val)
+        if val == parent_val:
+            ind_x = i
+            break
+    return ind_x,ind_y
+        
+    
+
+def make_family_tree(loc,all_gens):
+    
+    xmin,dx = 0,1
+    ymin,dy = 0,1
+    def _x(j):
+        return xmin+dx*j
+    def _y(i):
+        return ymin+dy*i
+    
+    all_orders = []
+    all_parentvals = []
+    all_ids = []
+    
+    for i,(generation,settings) in enumerate(all_gens):
+        
+        print("Gen",i,generation.n)
+        
+        
+        scores = generation.serialize('score')
+        
+        order = np.argsort(scores)[::-1]
+        all_orders.append(order)
+        parentvals = []
+        ids = [] 
+        
+        y = _y(i)
+        
+        for j,ind in enumerate(order):
+            x = _x(j)
+            individual = generation[ind]
+            theid = individual['id']
+            
+            ids.append(theid)
+            parentval = idclass.make_parentval(theid)
+            parentvals.append(parentval)
+            
+            unpacked_id = idclass.unpack_id(theid)
+            
+            print("Indivi",individual['id'])
+            print(unpacked_id)
+            if  i != 0: # 0th gen is especial
+                # If new in this generation, look for parents
+                if int(unpacked_id['g']) == i:
+                    if (unpacked_id['T'] == "M" or unpacked_id['T'] == "CO"):
+                        for pval in unpacked_id['P'].split(';'):
+                            print(pval)
+                            # input()
+                            ind_x,ind_y = find_parent(all_parentvals[-1],pval)
+                            ind_y = i-1 # note: in last generation (ignore whatever parentfind finds)
+                            plt.plot([x,_x(ind_x)],[y,_y(ind_y)],marker='',ls='-',c='k')
+                # Else look for self
+                else:
+                    ind_y = i-1
+                    ind_x = all_ids[-1].index(individual['id'])
+                    plt.plot([x,_x(ind_x)],[y,_y(ind_y)],marker='',ls='-',c='k')
+                    
+            
+            plt.plot(x,y,marker='o',c= 'k')
+        
+        all_parentvals.append(parentvals)
+        all_ids.append(ids)
+        
+    plt.gca().invert_yaxis()
+        
+    plt.show()
+
+def make_family_tree_text(all_gens): # Fails
     
     all_gens = [all_gens[0]]
     

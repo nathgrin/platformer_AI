@@ -111,10 +111,19 @@ class id_manager():
     
     def make_parentval(self,the_id):
         splitted = the_id.split('.')
-        return ",".join( [x[2:] for x in splitted[:2]]) # skip the labels
+        return ",".join( [x[2:] for x in [splitted[0],splitted[1],splitted[3],splitted[4]]] ) # skip the labels
     
     def join_parentvals(self,vals:list) -> str:
         return ";".join(vals)
+    
+    def unpack_id(self,the_id:str) -> dict:
+        out = {}
+        for entry in the_id.split('.'):
+            splitted = entry.split(':')
+            out[splitted[0]] = splitted[1]
+        return out
+        
+    
 idclass= id_manager()
 
 class individual_class(dict):
@@ -221,12 +230,17 @@ class myGA():
         # Make baby settings
         self.settings['makebaby_fullrandom_proportion'] = self.settings.get('makebaby_fullrandom_proportion',1)
         self.settings['makebaby_mutatebaby_proportion'] = self.settings.get('makebaby_mutatebaby_proportion',2)
+        self.settings['makebaby_nudgebaby_proportion'] = self.settings.get('makebaby_nudgebaby_proportion',1)
         self.settings['makebaby_crossover_proportion']  = self.settings.get('makebaby_crossover_proportion',4)
         
         self.settings['makebaby_fullrandom_proportion_default'] = self.settings.get('makebaby_fullrandom_proportion',1)
         self.settings['makebaby_mutatebaby_proportion_default'] = self.settings.get('makebaby_mutatebaby_proportion',2)
+        self.settings['makebaby_nudgebaby_proportion_default'] = self.settings.get('makebaby_nudgebaby_proportion_proportion',1)
         self.settings['makebaby_fullrandom_proportion_morevariation'] = 3*self.settings.get('makebaby_fullrandom_proportion',1)
         self.settings['makebaby_mutatebaby_proportion_morevariation'] = 3*self.settings.get('makebaby_mutatebaby_proportion',2)
+        self.settings['makebaby_nudgebaby_proportion_morevariation'] = 3*self.settings.get('makebaby_nudgebaby_proportion_proportion',1)
+        
+        self.settings['makebaby_nudgebaby_nudgesize'] = self.settings.get('makebaby_nudgebaby_nudgesize',0.01) 
         
         # Nextgen selection
         self.settings['keep_best_n'] = self.settings.get('keep_best_n',2*self.settings['n_individuals']//3)
@@ -285,11 +299,11 @@ class myGA():
         
         # Reset scores
         for i,individual in enumerate(generation):
-                generation[i]['score'] = 0
-                
+            generation[i]['score'] = 0
+        
         for i in range(n_attempts): # n attempts for each AI.
             thegame.setup()
-        
+            
             arcade.run()
             # arcarde.exit() inside class, then:
             for j,score in enumerate(thegame.score_list):
@@ -310,7 +324,7 @@ class myGA():
         powers = powers/sum(powers) # normalise
         # cumul = np.cumsum(powers)
         
-        inds = np.random.choice(len(generation),n_parents,p=powers)
+        inds = np.random.choice(len(generation),n_parents,p=powers, replace=False)
         
         
         if False:# Old
@@ -417,11 +431,11 @@ class myGA():
     def make_baby(self,generation: generation_class)->list:
         
             
-        idclass = id_manager()
         
         # yes we'll get these from settings at some point
         makebaby_fullrandom_proportion = self.settings['makebaby_fullrandom_proportion']
         makebaby_mutatebaby_proportion = self.settings['makebaby_mutatebaby_proportion']
+        makebaby_nudgebaby_proportion  = self.settings['makebaby_nudgebaby_proportion']
         makebaby_crossover_proportion  = self.settings['makebaby_crossover_proportion']
         
         tot = makebaby_fullrandom_proportion + makebaby_mutatebaby_proportion + makebaby_crossover_proportion
@@ -447,6 +461,21 @@ class myGA():
             childs_chromosomes = (childs_chromosomes,)
             
             # print("mutated")
+        elif rando < cumul[2]: # Nudge baby
+            nudge_size = self.settings.get('makebaby_nudgebaby_nudgesize',0.01)
+            
+            parent_inds = self.select_parents(generation,n_parents=1)
+            childs_chromosomes = generation[parent_inds[0]]['chromosome'].copy()
+            # random number of random nudges
+            chromo_id = idclass.new_id(Gn=generation.n , parents=idclass.make_parentval(generation[parent_inds[0]]['id']), babytype="N")
+            chromo_id_mutation = ""
+            for ind in np.random.permutation(len(childs_chromosomes))[:np.random.randint(1,len(childs_chromosomes)-1)]:
+                chromo_id_mutation += "%02i"%(ind)
+                childs_chromosomes[ind] += np.random.normal(scale=nudge_size)
+                childs_chromosomes[ind] = max(-1.,min(1.,childs_chromosomes[ind]))
+            chromo_id = idclass.id_replace_value(chromo_id,"M",chromo_id_mutation)
+            
+            childs_chromosomes = (childs_chromosomes,)
             
         else : # Crossover baby
             parent_inds = self.select_parents(generation,n_parents=2)
@@ -508,15 +537,17 @@ class myGA():
         # counts = np.bincount(check_arr)
         
         selected = list(np.unique([check_arr[ind] for ind in selected]))
+        # print("Selected",selected)
         
         # Pick the rest with probability
     
         choose_from_inds = [ i for i in range(len(combined)) if check_arr[i] == i and i not in selected]
+        # print("choose_from",choose_from_inds)
         
         powers = np.array([combined_scores[ind] for ind in choose_from_inds])
         powers = powers/sum(powers) # normalise
         
-        inds = list( np.random.choice(choose_from_inds,min(len(choose_from_inds),n_individuals-len(selected)),p=powers) )
+        inds = list( np.random.choice(choose_from_inds,min(len(choose_from_inds),n_individuals-len(selected)),p=powers, replace=False) )
         
         selected = selected + inds
         
@@ -525,8 +556,10 @@ class myGA():
         while len(selected) < n_individuals: # If not enough selected yet (shouldnt have happened except if above expection triggered)
             powers = np.array(combined_scores)
             powers = powers/np.sum(powers)
-            new = np.random.choice(len(combined_scores),1,p=powers)
+            new = np.random.choice(len(combined_scores),1,p=powers, replace=False)
             selected.append(new[0])
+            raise Exception("loop in replace_generation: I should not have been needed")
+            
         
         print(2*"    "+"selected:"," ".join([ "%i+%i"%(n_individuals* (i//n_individuals),i%n_individuals) for i in selected]))
         
@@ -710,7 +743,8 @@ def main():
                                  
                                  'makebaby_fullrandom_proportion': 1,
                                  'makebaby_mutatebaby_proportion': 2,
-                                 'makebaby_crossover_proportion': 5,
+                                 'makebaby_nudgebaby_proportion': 1,
+                                 'makebaby_crossover_proportion': 6,
                                  
                                  'keep_best_n': 2*n_individuals//3, # Rest are chosen roulette
                                  
@@ -783,6 +817,10 @@ def main():
         print("    scores","quantiles [0,0.5,0.75,1]:",np.quantile(scores,(0,0.5,0.75,1.)))
         print(fmt_score_log(scores,ids))
         
+        for score in scores: # Check legatlity
+            if score > (MAX_SCORE+1)*theGA.settings['n_attempts']:
+                print(scores)
+                raise Exception("More than max Score????")
         
         # New generation
         generation = theGA.replace_generation(combined,generation)

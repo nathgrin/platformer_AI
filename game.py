@@ -41,7 +41,7 @@ PLAYER_MAX_FUEL = 20
 PLAYER_FUEL_PER_TICK = 1
 
 # Game Settings
-MAX_SCORE = 10000
+MAX_SCORE = 500#10000
 
 # GA extra
 
@@ -92,6 +92,26 @@ def get_enemies_sorted_by_distance_positive(sprite: arcade.Sprite, sprite_list: 
     
     for i in range(len(sprite_list)):
         distance = signed_distance_between_sprites(sprite_list[i],sprite)
+    
+        if distance > 0:
+            distances.append(distance)  
+    if len(distances) == 0:
+        return None
+    sort = np.argsort(distances)
+    # print([distances[ind] for ind in sort])
+    
+    sorted_sprite_list = [sprite_list[ind] for ind in sort]
+    return sorted_sprite_list
+
+def get_enemies_sorted_by_xdistance_positive(sprite: arcade.Sprite, sprite_list: arcade.SpriteList) -> tuple[arcade.Sprite, float]:
+    
+    if len(sprite_list) == 0:
+        return None
+    
+    distances = []
+    
+    for i in range(len(sprite_list)):
+        distance = sprite_list[i].center_x-sprite.center_x
     
         if distance > 0:
             distances.append(distance)  
@@ -372,7 +392,8 @@ class MyGame(arcade.Window):
             # Hit enemies
             
             # See if we hit any Enemies
-            the_list = self.scene["Players"] if self.multiple_ai else [ self.player_sprite ]
+            # the_list = self.scene["Players"] if self.multiple_ai else [ self.player_sprite ]
+            the_list = self.player_sprites if self.multiple_ai else [ self.player_sprite ]
             for i,player_sprite in enumerate(the_list):
                 if self.players_alive[i]:
                     enemy_hit_list = arcade.check_for_collision_with_list(
@@ -449,7 +470,8 @@ class MyGame(arcade.Window):
         # self.ai_input[4],self.ai_input[5] = 0.,0.
         if "Enemies" in self.scene.name_mapping:
             
-            sorted_spritelist = get_enemies_sorted_by_distance_positive(player_sprite,self.scene["Enemies"])
+            # sorted_spritelist = get_enemies_sorted_by_distance_positive(player_sprite,self.scene["Enemies"])
+            sorted_spritelist = get_enemies_sorted_by_xdistance_positive(player_sprite,self.scene["Enemies"])
             
             if sorted_spritelist is not None:
                 for i,enemy in enumerate([sorted_spritelist[0]]):
