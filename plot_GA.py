@@ -51,7 +51,9 @@ def make_data_from_generationlist(all_gens:list)->list:
     return np.array(out)
 
 
-def make_cornerplot(loc,all_gens):
+def make_cornerplot(loc,all_gens,
+                    savefigure_fname="GAcorner",
+                    ):
     
     data_arr = make_data_from_generationlist(all_gens)
     
@@ -68,7 +70,9 @@ def make_cornerplot(loc,all_gens):
     
     corner.overplot_points(figure,data_arr,c='r',alpha=0.5)
     
-    plt.savefig(loc+"GA_corner.png")
+    savefigure_fname = loc+savefigure_fname+".png"
+    
+    plt.savefig(savefigure_fname)
     plt.show()
 
 
@@ -294,11 +298,12 @@ def main():
     
     loc = "data/"
     fname = "GA_out.dat"
+    savefigure_fname = "GAcorner"
     
     theGA = myGA()
     all_gens = theGA.read_file(loc+fname)
     
-    make_cornerplot(loc,all_gens)
+    make_cornerplot(loc,all_gens,savefigure_fname=savefigure_fname)
     
     # make_family_tree(loc,all_gens)
     

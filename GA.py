@@ -438,17 +438,18 @@ class myGA():
         makebaby_nudgebaby_proportion  = self.settings['makebaby_nudgebaby_proportion']
         makebaby_crossover_proportion  = self.settings['makebaby_crossover_proportion']
         
-        tot = makebaby_fullrandom_proportion + makebaby_mutatebaby_proportion + makebaby_crossover_proportion
-        cumul = [makebaby_fullrandom_proportion,makebaby_fullrandom_proportion + makebaby_mutatebaby_proportion, makebaby_fullrandom_proportion + makebaby_mutatebaby_proportion+ makebaby_crossover_proportion]
-        rando = np.random.uniform(0.,tot)
+        # Check the order matches the ifs
+        probs = [makebaby_fullrandom_proportion,makebaby_mutatebaby_proportion, makebaby_nudgebaby_proportion, makebaby_crossover_proportion]
+        probs = np.array(probs)/np.sum(probs)
+        which = np.choice(len(probs),p=probs)
         # print(rando,makebaby_fullrandom_proportion,makebaby_mutatebaby_proportion,makebaby_crossover_proportion)
         
-        if rando < cumul[0]: # Random baby
+        if which == 0: # Random baby
             childs_chromosomes = ( np.random.uniform(-1.,1.,len(generation[0]['chromosome'])), )
             chromo_id = idclass.new_id(Gn=generation.n , babytype="R")
             # print(childs_chromosomes)
             # print("random")
-        elif rando < cumul[1]: # Mutated baby
+        elif which == 1: # Mutated baby
             parent_inds = self.select_parents(generation,n_parents=1)
             childs_chromosomes = generation[parent_inds[0]]['chromosome'].copy()
             # random number of random mutations
@@ -461,7 +462,7 @@ class myGA():
             childs_chromosomes = (childs_chromosomes,)
             
             # print("mutated")
-        elif rando < cumul[2]: # Nudge baby
+        elif which == 2: # Nudge baby
             nudge_size = self.settings.get('makebaby_nudgebaby_nudgesize',0.01)
             
             parent_inds = self.select_parents(generation,n_parents=1)
@@ -709,11 +710,11 @@ def find_equalarray_in_list(inlist):
     
 def main():
     # Some settings
-    new_file = True
+    new_file = False
     loc = "data/"
     fname = "GA_out.dat"
     
-    watch_games = True
+    watch_games = False
     
     # testing?
     testing = False # Makes scores random
