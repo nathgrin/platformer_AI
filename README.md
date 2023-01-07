@@ -16,3 +16,4 @@ Todo:
 - [] throrough check jump mechanic..
 - [] move generate_ai_input to a better spot..
 - [] check if genome has already existed
+- [] fix output when last generation was only settings :s

@@ -39,7 +39,8 @@ class generation_class(list):
             # print(individual_line)
             writeline += individual_line+"\n"
         return writeline
-        
+def new_generation(*args,**kwargs):
+    return generation_class(*args,**kwargs)
     
 
 def make_genome(chromosome: np.array) -> str:
@@ -167,6 +168,9 @@ class individual_class(dict):
                     self[key] = val
         return self
 
+def new_individual(*args,**kwargs):
+    return individual_class(*args,**kwargs)
+
 class GA_settings(dict):
     """extends dict,
     contains settings
@@ -255,7 +259,7 @@ class myGA():
         
     def new_individual(self,ai_instance):
         
-        out = individual_class({'chromosome':ai_instance.weights,'ai':ai_instance,'score':1,'id':idclass.new_id()})
+        out = new_individual({'chromosome':ai_instance.weights,'ai':ai_instance,'score':1,'id':idclass.new_id()})
         
         out['ai'].scales[1][0] = PLAYER_MAX_FUEL
         out['ai'].scales[1][1] = SCREEN_HEIGHT
@@ -441,7 +445,7 @@ class myGA():
         # Check the order matches the ifs
         probs = [makebaby_fullrandom_proportion,makebaby_mutatebaby_proportion, makebaby_nudgebaby_proportion, makebaby_crossover_proportion]
         probs = np.array(probs)/np.sum(probs)
-        which = np.choice(len(probs),p=probs)
+        which = np.random.choice(len(probs),p=probs)
         # print(rando,makebaby_fullrandom_proportion,makebaby_mutatebaby_proportion,makebaby_crossover_proportion)
         
         if which == 0: # Random baby
@@ -524,7 +528,7 @@ class myGA():
         
         return out1,out2
         
-    def replace_generation(self,combined: generation_class,old_generation: generation_class):
+    def replace_generation(self,combined: generation_class,generation_old: generation_class):
         n_individuals = self.settings['n_individuals']
         # Just choose best
         combined_scores = combined.serialize('score')
@@ -564,9 +568,9 @@ class myGA():
         
         print(2*"    "+"selected:"," ".join([ "%i+%i"%(n_individuals* (i//n_individuals),i%n_individuals) for i in selected]))
         
-        new_generation = old_generation.from_list([ combined[ind] for ind in selected ])
+        generation_new = generation_old.from_list([ combined[ind] for ind in selected ])
         
-        return new_generation
+        return generation_new
         
     def check_genetic_variation(self,generation):
         chromosomes = generation.serialize('chromosome')
@@ -636,25 +640,49 @@ class myGA():
         
         
     def get_last_generation_from_file(self,fname:str) -> tuple[generation_class, GA_settings]:
+        """settings will be last provided in the file !OR default! if last generation has no settings line
+        generation will be last set of individuals in the file (not  the last generation)
+
+        Args:
+            fname (str): _description_
+
+        Returns:
+            tuple[generation_class, GA_settings]: _description_
+        """
         all_lines = self.read_file_rawlines(fname)
         
-        generation,settings = self.make_generation_from_lineblock(all_lines[-1])
+        print(all_lines[-1])
         
+        
+        i = len(all_lines)-1
+        generation,settings = new_generation(),None
+        # Keep going back until you have both a generation and a settings
+        while i >= 0 and (len(generation) == 0 or settings is None):
+            use_lineblock = all_lines[i]
+            
+            in_generation,in_settings = self.make_generation_from_lineblock(use_lineblock)
+            
+            if len(generation) == 0:
+                generation = in_generation
+            if settings is None:
+                settings = in_settings
+            
+            i += -1
         
         return generation,settings
     
-    def make_generation_from_lineblock(self,lines:list) -> generation_class:
+    def make_generation_from_lineblock(self,lines:list) -> tuple[generation_class, GA_settings]:
         """process input from a file. a block of lines which are the generation
 
         Args:
             lines (list): _description_
 
         Returns:
-            generation_class: _description_
+            tuple[generation_class, GA_settings]: _description_
         """
         
         
-        generation = generation_class()
+        generation = new_generation()
         settings = GA_settings()
         
         generation.n = int(lines[0].split()[-1])
@@ -667,7 +695,7 @@ class myGA():
             i = 1
         
         n_inputs = settings.get("n_inputs")
-        generation.from_list([self.new_individual(perceptron(n=settings['n_inputs']+1)).from_line(line) for line in lines[i:]])
+        generation.from_list([self.new_individual(perceptron(n=n_inputs+1)).from_line(line) for line in lines[i:]])
         
         return generation,settings
 
@@ -679,7 +707,7 @@ def make_new_GArun(theGA,settings):
     
     n_individuals = theGA.settings['n_individuals']
     
-    generation = generation_class().from_list([ theGA.new_individual(perceptron(n=settings['n_inputs']+1)) for i in range(n_individuals) ])
+    generation = new_generation().from_list([ theGA.new_individual(perceptron(n=settings['n_inputs']+1)) for i in range(n_individuals) ])
     
     # Fix ids:
     for individual in generation:
@@ -787,7 +815,7 @@ def main():
         # Produce Children
         print("  - Breed Children")
         cnt = 0
-        children = generation_class()
+        children = new_generation()
         while cnt < n_children:
             childs_chromosomes,chromo_id = theGA.make_baby(generation)
             
