@@ -3,8 +3,6 @@
 
  simple ai for simple platformer test
 
-Todo:
-
 - [ ] better settings handling (defaults, wrong vals, etc)
 - [ ] better scales handling in AI/individual class
 - [ ] Stop memory leaking???

@@ -299,6 +299,7 @@ class myGA():
         thegame.ai = generation.serialize('ai')
         thegame.multiple_ai = True
         
+        thegame.set_update_rate(1/480)
         
         
         # Reset scores
@@ -700,22 +701,46 @@ class myGA():
         return generation,settings
 
 
-def make_new_GArun(theGA,settings):
+def  make_new_GArun(theGA,settings):
     
     
     theGA.set_settings(settings)
     
-    n_individuals = theGA.settings['n_individuals']
+    if True:
+        n_individuals = theGA.settings['n_individuals']
+        
+        generation = new_generation().from_list([ theGA.new_individual(perceptron(n=settings['n_inputs']+1)) for i in range(n_individuals) ])
+        
+    else:
+        # not random initialization!
+        x = np.arange(-1, 1.5, 0.5)
+        # print(x,len(x),settings['n_inputs']**(settings['n_inputs']+1))
+        
+        chromosomes = [ np.array([i,j,k,l,m]) for i in x for j in x for k in x for l in x for m in x ]
+        # print(len(chromosomes))
+        
+        n_individuals = len(chromosomes)
+        # print("n_individuals")
+        # for c in chromosomes:
+        #     print(c)
+        #     input()
+            
+            
+        generation = new_generation().from_list([ theGA.new_individual(perceptron(n=settings['n_inputs']+1)) for i in range(n_individuals) ])
+        
+        for i,chromosome in enumerate(chromosomes):
+            generation[i].set_chromosome(chromosome)
     
-    generation = new_generation().from_list([ theGA.new_individual(perceptron(n=settings['n_inputs']+1)) for i in range(n_individuals) ])
     
+    # input()
+
     # Fix ids:
     for individual in generation:
         individual['id'] = idclass.id_replace_value(individual['id'],'g',"0")
         individual['genome'] = make_genome(individual['chromosome'])
         individual['id'] = idclass.id_replace_value(individual['id'],'G',individual['genome'])
         individual['id'] = idclass.id_replace_value(individual['id'],'T',"R")
-
+        
     return theGA,generation
     
     
@@ -775,7 +800,8 @@ def main():
                                  'makebaby_nudgebaby_proportion': 1,
                                  'makebaby_crossover_proportion': 6,
                                  
-                                 'keep_best_n': 2*n_individuals//3, # Rest are chosen roulette
+                                #  'keep_best_n': 2*n_individuals//3, # Rest are chosen roulette
+                                 'keep_best_n': n_individuals, # Rest are chosen roulette
                                  
                                 }) 
         
