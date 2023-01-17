@@ -41,7 +41,7 @@ PLAYER_MAX_FUEL = 20
 PLAYER_FUEL_PER_TICK = 1
 
 # Game Settings
-MAX_SCORE = 10000
+MAX_SCORE = 5000
 
 # GA extra
 

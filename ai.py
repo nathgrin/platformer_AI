@@ -2,7 +2,7 @@
 """
 import numpy as np
 # from game import *
-    
+
     
 class perceptron():
     def __init__(self, n=6,weights=None):
@@ -47,6 +47,7 @@ def main():
     tst_in = np.array([0,0.5,0.5])
     tst = pcp.run_net(tst_in)
     print(tst)
+    
     
     input()
     

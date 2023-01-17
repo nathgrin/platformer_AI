@@ -763,7 +763,7 @@ def find_equalarray_in_list(inlist):
     
 def main():
     # Some settings
-    new_file = False
+    new_file = True
     loc = "data/"
     fname = "GA_out.dat"
     
@@ -780,10 +780,10 @@ def main():
     # Make generation
     # Read file
     if new_file:
-        open(loc+fname, 'w').close()
+        open(loc+fname, 'w').close() # clearfile
         
         
-        n_individuals = 24
+        n_individuals = 32
         
         settings = GA_settings({ 'loc': loc,
                                  'fname': fname,
@@ -797,11 +797,11 @@ def main():
                                  
                                  'makebaby_fullrandom_proportion': 1,
                                  'makebaby_mutatebaby_proportion': 2,
-                                 'makebaby_nudgebaby_proportion': 1,
+                                 'makebaby_nudgebaby_proportion': 0,
                                  'makebaby_crossover_proportion': 6,
                                  
-                                #  'keep_best_n': 2*n_individuals//3, # Rest are chosen roulette
-                                 'keep_best_n': n_individuals, # Rest are chosen roulette
+                                 'keep_best_n': 2*n_individuals//3, # Rest are chosen roulette
+                                # 'keep_best_n': n_individuals, # Rest are chosen roulette
                                  
                                 }) 
         
