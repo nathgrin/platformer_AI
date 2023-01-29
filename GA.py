@@ -672,7 +672,7 @@ class myGA():
         
         return generation,settings
     
-    def make_generation_from_lineblock(self,lines:list) -> tuple[generation_class, GA_settings]:
+    def make_generation_from_lineblock(self,lines:list[str]) -> tuple[generation_class, GA_settings]:
         """process input from a file. a block of lines which are the generation
 
         Args:
@@ -763,7 +763,7 @@ def find_equalarray_in_list(inlist):
     
 def main():
     # Some settings
-    new_file = True
+    new_file = False
     loc = "data/"
     fname = "GA_out.dat"
     
